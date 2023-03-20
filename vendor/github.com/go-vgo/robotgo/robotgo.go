@@ -9,38 +9,39 @@
 // except according to those terms.
 
 /*
-
 Package robotgo Go native cross-platform system automation.
 
 Please make sure Golang, GCC is installed correctly before installing RobotGo;
 
 See Requirements:
+
 	https://github.com/go-vgo/robotgo#requirements
 
 Installation:
+
 	go get -u github.com/go-vgo/robotgo
 */
 package robotgo
 
 /*
-//#if defined(IS_MACOSX)
+#if defined(IS_MACOSX)
 	#cgo darwin CFLAGS: -x objective-c -Wno-deprecated-declarations
 	#cgo darwin LDFLAGS: -framework Cocoa -framework OpenGL -framework IOKit
 	#cgo darwin LDFLAGS: -framework Carbon -framework CoreFoundation
 	#cgo darwin,amd64 LDFLAGS:-L${SRCDIR}/cdeps/mac/amd -lpng -lz
 	#cgo darwin,arm64 LDFLAGS:-L${SRCDIR}/cdeps/mac/m1 -lpng -lz
-//#elif defined(USE_X11)
+#elif defined(USE_X11)
 	// Drop -std=c11
 	#cgo linux CFLAGS: -I/usr/src
 	#cgo linux LDFLAGS: -L/usr/src -lpng -lz -lX11 -lXtst -lm
 	// #cgo linux LDFLAGS: -lX11-xcb -lxcb -lxcb-xkb -lxkbcommon -lxkbcommon-x11
-//#endif
+#endif
 	// #cgo windows LDFLAGS: -lgdi32 -luser32 -lpng -lz
 	#cgo windows LDFLAGS: -lgdi32 -luser32
 	#cgo windows,amd64 LDFLAGS: -L${SRCDIR}/cdeps/win/amd/win64 -lpng -lz
 	#cgo windows,386 LDFLAGS: -L${SRCDIR}/cdeps/win/amd/win32 -lpng -lz
 	#cgo windows,arm64 LDFLAGS:-L${SRCDIR}/cdeps/win/arm -lpng -lz
-// #include <AppKit/NSEvent.h>
+#include <AppKit/NSEvent.h>
 #include "screen/goScreen.h"
 #include "mouse/goMouse.h"
 #include "key/goKey.h"
@@ -633,8 +634,8 @@ func SetMouseDelay(delay int) {
 // KeyTap tap the keyboard code;
 //
 // See keys:
-//	https://github.com/go-vgo/robotgo/blob/master/docs/keys.md
 //
+//	https://github.com/go-vgo/robotgo/blob/master/docs/keys.md
 func KeyTap(tapKey string, args ...interface{}) string {
 	var (
 		akey     string
@@ -717,8 +718,8 @@ func KeyTap(tapKey string, args ...interface{}) string {
 // KeyToggle toggle the keyboard
 //
 // See keys:
-//	https://github.com/go-vgo/robotgo/blob/master/docs/keys.md
 //
+//	https://github.com/go-vgo/robotgo/blob/master/docs/keys.md
 func KeyToggle(key string, args ...string) string {
 	ckey := C.CString(key)
 	defer C.free(unsafe.Pointer(ckey))
@@ -1058,10 +1059,10 @@ func FindCBitmap(bmp CBitmap, args ...interface{}) (int, int) {
 
 // FindBitmap find the bitmap's pos
 //
-//	robotgo.FindBitmap(bitmap, source_bitamp C.MMBitmapRef, tolerance float64)
+//		robotgo.FindBitmap(bitmap, source_bitamp C.MMBitmapRef, tolerance float64)
 //
-//  |tolerance| should be in the range 0.0f - 1.0f, denoting how closely the
-//  colors in the bitmaps need to match, with 0 being exact and 1 being any.
+//	 |tolerance| should be in the range 0.0f - 1.0f, denoting how closely the
+//	 colors in the bitmaps need to match, with 0 being exact and 1 being any.
 //
 // This method only automatically free the internal bitmap,
 // use `defer robotgo.FreeBitmap(bit)` to free the bitmap
