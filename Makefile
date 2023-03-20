@@ -4,6 +4,7 @@ precommit: ensure format generate test check addlicense
 	@echo "ready to commit"
 
 ensure:
+	go mod tidy
 	go mod verify
 	go mod vendor
 	go run -mod=vendor github.com/goware/modvendor -copy="**/*.c **/*.h **/*.proto" -v
