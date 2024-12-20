@@ -13,7 +13,6 @@
 // under the License.
 
 /*
-
 Package imgo process the image and get info
 */
 package imgo
@@ -32,7 +31,6 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
-	"io/ioutil"
 
 	"golang.org/x/image/bmp"
 	"golang.org/x/image/tiff"
@@ -94,14 +92,14 @@ func Height(img image.Image) int {
 }
 
 // Save create a image file with the image.Image
-func Save(path string, img image.Image) error {
+func Save(path string, img image.Image, quality ...int) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	return Encode(f, img, getFm(path))
+	return Encode(f, img, getFm(path), quality...)
 }
 
 // SaveToPNG create a png file with the image.Image
@@ -116,7 +114,12 @@ func SaveToPNG(path string, img image.Image) error {
 }
 
 // SaveToJpeg create a jpeg file with the image.Image
-func SaveToJpeg(path string, img image.Image) error {
+func SaveToJpeg(path string, img image.Image, quality ...int) error {
+	q := 70
+	if len(quality) > 0 {
+		q = quality[0]
+	}
+
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -124,7 +127,7 @@ func SaveToJpeg(path string, img image.Image) error {
 	defer f.Close()
 
 	opt := jpeg.Options{
-		Quality: 90,
+		Quality: q,
 	}
 	err = jpeg.Encode(f, img, &opt)
 	return err
@@ -209,10 +212,17 @@ func Decode(f *os.File, fm string) (image.Image, error) {
 }
 
 // Encode encode image to buf
-func Encode(out io.Writer, subImg image.Image, fm string) error {
+func Encode(out io.Writer, subImg image.Image, fm string, quality ...int) error {
+	q := 70
+	ct := 0
+	if len(quality) > 0 {
+		q = quality[0]
+		ct = quality[0]
+	}
+
 	switch fm {
 	case "jpeg":
-		return jpeg.Encode(out, subImg, nil)
+		return jpeg.Encode(out, subImg, &jpeg.Options{Quality: q})
 	case "png":
 		return png.Encode(out, subImg)
 	case "gif":
@@ -220,14 +230,14 @@ func Encode(out io.Writer, subImg image.Image, fm string) error {
 	case "bmp":
 		return bmp.Encode(out, subImg)
 	case "tiff":
-		return tiff.Encode(out, subImg, &tiff.Options{})
+		return tiff.Encode(out, subImg, &tiff.Options{Compression: tiff.CompressionType(ct)})
 	default:
 		return errors.New("Encode: ERROR FORMAT")
 	}
 }
 
-// ToString tostring image.Image
-func ToString(img image.Image) (result string) {
+// ToStringImg tostring image.Image
+func ToStringImg(img image.Image) (result string) {
 	for row := img.Bounds().Min.Y; row < img.Bounds().Max.Y; row++ {
 		for col := img.Bounds().Min.X; col < img.Bounds().Max.X; col++ {
 			if IsBlack(img.At(col, row)) {
@@ -289,11 +299,11 @@ func PngToBytes(path string) ([]byte, error) {
 
 // SaveByte []byte to image path
 func SaveByte(path string, dist []byte) error {
-	return ioutil.WriteFile(path, dist, 0666)
+	return os.WriteFile(path, dist, 0666)
 }
 
-// ToByteImg convert image.Image to []byte
-func ToByteImg(img image.Image, fm ...string) []byte {
+// ToByte convert image.Image to []byte
+func ToByte(img image.Image, fm ...string) []byte {
 	buff := bytes.NewBuffer(nil)
 	// jpeg.Encode(buff, img, nil)
 	typ := "jpeg"
@@ -313,9 +323,9 @@ func ToByteImg(img image.Image, fm ...string) []byte {
 	return dist
 }
 
-// ToStringImg convert image.Image to string
-func ToStringImg(img image.Image) string {
-	return string(ToByteImg(img))
+// ToString convert image.Image to string
+func ToString(img image.Image, fm ...string) string {
+	return string(ToByte(img, fm...))
 }
 
 // StrToImg convert base64 string to image.Image
@@ -334,7 +344,7 @@ func ByteToImg(b []byte) (image.Image, error) {
 
 // OpenBase64 return a base64 string from image file
 func OpenBase64(file string) (encode string, err error) {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return
 	}
@@ -348,5 +358,5 @@ func SaveByBase64(encode string, path string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, 0666)
+	return os.WriteFile(path, data, 0666)
 }

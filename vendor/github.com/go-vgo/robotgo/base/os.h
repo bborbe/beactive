@@ -2,19 +2,12 @@
 #ifndef OS_H
 #define OS_H
 
-/* Python versions under 2.5 don't support this macro, but it's not
- * terribly difficult to replicate: */
-#ifndef PyModule_AddIntMacro
-	#define PyModule_AddIntMacro(module, macro) \
-		PyModule_AddIntConstant(module, #macro, macro)
-#endif /* PyModule_AddIntMacro */
-
 #if !defined(IS_MACOSX) && defined(__APPLE__) && defined(__MACH__)
 	#define IS_MACOSX
 #endif /* IS_MACOSX */
 
 #if !defined(IS_WINDOWS) && (defined(WIN32) || defined(_WIN32) || \
-                             defined(__WIN32__) || defined(__WINDOWS__) || defined(__CYGWIN__))
+                            defined(__WIN32__) || defined(__WINDOWS__) || defined(__CYGWIN__))
 	#define IS_WINDOWS
 #endif /* IS_WINDOWS */
 
@@ -30,8 +23,7 @@
 	#error "Sorry, this platform isn't supported yet!"
 #endif
 
-/* Interval to align by for large buffers (e.g. bitmaps). */
-/* Must be a power of 2. */
+/* Interval to align by for large buffers (e.g. bitmaps). Must be a power of 2. */
 #ifndef BYTE_ALIGN
 	#define BYTE_ALIGN 4 /* Bytes to align pixel buffers to. */
 	/* #include <stddef.h> */
@@ -44,6 +36,20 @@
 #else
 	/* Aligns given width to padding. */
 	#define ADD_PADDING(width) (BYTE_ALIGN + (((width) - 1) & ~(BYTE_ALIGN - 1)))
+#endif
+
+#if defined(IS_WINDOWS)
+	#if defined (_WIN64)
+		#define RobotGo_64
+	#else
+		#define RobotGo_32
+	#endif
+#else
+	#if defined (__x86_64__)
+		#define RobotGo_64
+	#else
+		#define RobotGo_32
+	#endif
 #endif
 
 #endif /* OS_H */

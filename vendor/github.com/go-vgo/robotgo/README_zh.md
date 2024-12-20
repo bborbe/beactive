@@ -1,5 +1,7 @@
 # Robotgo
 
+## !!! Warning: this page not updated !!!
+
 [![Build Status](https://github.com/go-vgo/robotgo/workflows/Go/badge.svg)](https://github.com/go-vgo/robotgo/commits/master)
 [![CircleCI Status](https://circleci.com/gh/go-vgo/robotgo.svg?style=shield)](https://circleci.com/gh/go-vgo/robotgo)
 [![Build Status](https://travis-ci.org/go-vgo/robotgo.svg)](https://travis-ci.org/go-vgo/robotgo)
@@ -15,7 +17,7 @@ RobotGo 支持 Mac, Windows, and Linux(X11).
 
 <br>
 
-提 Issues 请到 [Github](https://github.com/go-vgo/robotgo), 便于统一管理和即时更新
+提 Issues 请到 [Github](https://github.com/go-vgo/robotgo), 便于统一管理和即时更新; `REDAME_zh.md 已废弃, 不再更新`
 
 ## Contents
 - [Docs](#docs)
@@ -32,9 +34,10 @@ RobotGo 支持 Mac, Windows, and Linux(X11).
 - [License](#license)
 
 ## Docs
-- [GoDoc](https://godoc.org/github.com/go-vgo/robotgo)
-- [中文文档](https://github.com/go-vgo/robotgo/blob/master/docs/doc_zh.md)&nbsp;&nbsp;&nbsp;
-- [English Docs](https://github.com/go-vgo/robotgo/blob/master/docs/doc.md)
+- [GoDoc](https://godoc.org/github.com/go-vgo/robotgo) <br>
+
+<!-- - [中文文档](https://github.com/go-vgo/robotgo/blob/master/docs/doc_zh.md) (弃用)
+- [English Docs](https://github.com/go-vgo/robotgo/blob/master/docs/doc.md) (弃用) -->
 
 ## Binding:
 
@@ -53,25 +56,37 @@ GCC
 ```
 
 #### For Mac OS X:
+
+Xcode Command Line Tools  (And Privacy setting: [#277](https://github.com/go-vgo/robotgo/issues/277) )
+
 ```
-Xcode Command Line Tools
+xcode-select --install
 ```
 
 #### For Windows:
+
+[MinGW-w64](https://sourceforge.net/projects/mingw-w64/files) (推荐使用) 
+
 ```
-MinGW-w64 (推荐使用) or other GCC
+Or the other GCC (But you should compile the "libpng" with yourself. 
+Or you can removed the bitmap.go.)
 ```
 
 #### For everything else (Linux 等其他系统):
 
 ```
-GCC, libpng
+GCC, 
+libpng(bitmap)
 
 X11 with the XTest extension (also known as the Xtst library)
 
 事件:
 
 xcb, xkb, libxkbcommon
+
+Clipboard:  
+
+xsel xclip
 ```
 
 ##### Ubuntu:
@@ -81,8 +96,7 @@ sudo apt install gcc libc6-dev
 
 sudo apt install libx11-dev xorg-dev libxtst-dev libpng++-dev
 
-sudo apt install xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev libxkbcommon-x11-dev
-sudo apt install libxkbcommon-dev
+sudo apt install xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev libxkbcommon-x11-dev libxkbcommon-dev
 
 sudo apt install xsel xclip
 
@@ -91,7 +105,7 @@ sudo apt install xsel xclip
 ##### Fedora:
 
 ```yml
-sudo dnf install libxkbcommon-devel libXtst-devel libxkbcommon-x11-devel xorg-x11-xkb-utils-devel
+sudo dnf install libXtst-devel libxkbcommon-devel libxkbcommon-x11-devel xorg-x11-xkb-utils-devel
 
 sudo dnf install libpng-devel
 
@@ -99,10 +113,17 @@ sudo dnf install xsel xclip
 ```
 
 ## Installation:
+With Go module support (Go 1.11+), just import:
+
+```go
+import "github.com/go-vgo/robotgo"
+```
+
+Otherwise, to install the robotgo package, run the command:
+
 ```
 go get github.com/go-vgo/robotgo
 ```
-  It's that easy!
 
 png.h: No such file or directory? Please see [issues/47](https://github.com/go-vgo/robotgo/issues/47).
 
@@ -127,10 +148,12 @@ import (
 )
 
 func main() {
-  robotgo.ScrollMouse(10, "up")
-  robotgo.Scroll(100, 200)
+  // robotgo.ScrollMouse(10, "up")
+  robotgo.Scroll(0, -10)
+  robotgo.Scroll(100, 0)
   robotgo.MilliSleep(100)
-  robotgo.ScrollRelative(10, -100)
+  // robotgo.ScrollRelative(10, -100)
+  robotgo.ScrollSmooth(-10, 6)
 
   robotgo.MouseSleep = 100
   robotgo.Move(10, 20)
@@ -138,8 +161,10 @@ func main() {
   robotgo.Drag(10, 10)
 
   robotgo.Click("left", true)
-  robotgo.MoveSmooth(100, 200, 1.0, 100.0)
-  robotgo.MouseToggle("up")
+  robotgo.MoveSmooth(100, 200, 1.0, 10.0)
+
+  robotgo.Toggle("left")
+  robotgo.Toggle("left", "up")
 }
 ```
 
@@ -174,7 +199,8 @@ func main() {
   robotgo.KeyTap("i", arr)
 
   robotgo.MilliSleep(100)
-  robotgo.KeyToggle("a", "down")
+  robotgo.KeyToggle("a")
+  robotgo.KeyToggle("a", "up")
 
   robotgo.WriteAll("テストする")
   text, err := robotgo.ReadAll()
@@ -240,8 +266,8 @@ func main() {
   fmt.Println("FindBitmap------ ", fx, fy)
   robotgo.Move(fx, fy)
 
-  arr := robotgo.FindEveryBitmap(bit2)
-  fmt.Println("Find every bitmap: ", arr)
+  arr := robotgo.FindAllBitmap(bit2)
+  fmt.Println("Find all bitmap: ", arr)
   robotgo.SaveBitmap(bitmap, "test.png")
 
   fx, fy = robotgo.FindBitmap(bitmap)
@@ -301,6 +327,15 @@ func opencv() {
   robotgo.Move(x, y-rand.Intn(5))
   robotgo.MilliSleep(100)
   robotgo.Click()
+
+  res = gcv.FindAll(img1, img) // use find template and sift
+  fmt.Println("find all: ", res)
+  res1 := gcv.Find(img1, img)
+  fmt.Println("find: ", res1)
+
+  img2, _, _ := robotgo.DecodeImg("test_001.png")
+  x, y = gcv.FindX(img2, img)
+  fmt.Println(x, y)
 }
 ```
 
@@ -397,7 +432,7 @@ func main() {
     robotgo.Kill(100)
   }
 
-  abool := robotgo.ShowAlert("test", "robotgo")
+  abool := robotgo.Alert("test", "robotgo")
   if abool {
     fmt.Println("ok@@@ ", "ok")
   }

@@ -1,9 +1,19 @@
-#include "keypress.h"
-// #include "../base/deadbeef_rand_c.h"
+// Copyright 2016 The go-vgo Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// https://github.com/go-vgo/robotgo/blob/master/LICENSE
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+#include "../base/deadbeef_rand_c.h"
 #include "../base/microsleep.h"
+#include "keypress.h"
+#include "keycode_c.h"
 
 #include <ctype.h> /* For isupper() */
-
 #if defined(IS_MACOSX)
 	#include <ApplicationServices/ApplicationServices.h>
 	#import <IOKit/hidsystem/IOHIDLib.h>
@@ -15,115 +25,147 @@
 
 /* Convenience wrappers around ugly APIs. */
 #if defined(IS_WINDOWS)
-	#define WIN32_KEY_EVENT_WAIT(key, flags) \
-		(win32KeyEvent(key, flags), Sleep(DEADBEEF_RANDRANGE(0, 1)))
+	HWND GetHwndByPid(DWORD dwProcessId);
+
+	HWND getHwnd(uintptr pid, int8_t isPid) { 
+		HWND hwnd = (HWND) pid;
+		if (isPid == 0) { 
+			hwnd = GetHwndByPid(pid);
+		}
+		return hwnd;	
+	}
+
+	void WIN32_KEY_EVENT_WAIT(MMKeyCode key, DWORD flags, uintptr pid) {
+		win32KeyEvent(key, flags, pid, 0); 
+		Sleep(DEADBEEF_RANDRANGE(0, 1));
+	}
 #elif defined(USE_X11)
-	#define X_KEY_EVENT(display, key, is_press) \
-		(XTestFakeKeyEvent(display, \
-		                   XKeysymToKeycode(display, key), \
-		                   is_press, CurrentTime), \
-		 XSync(display, false))
-	#define X_KEY_EVENT_WAIT(display, key, is_press) \
-		(X_KEY_EVENT(display, key, is_press), \
-		 microsleep(DEADBEEF_UNIFORM(0.0, 0.5)))
+	Display *XGetMainDisplay(void);
+
+	void X_KEY_EVENT(Display *display, MMKeyCode key, bool is_press) {
+		XTestFakeKeyEvent(display, XKeysymToKeycode(display, key), is_press, CurrentTime); 
+		XSync(display, false);
+	}
+
+	void X_KEY_EVENT_WAIT(Display *display, MMKeyCode key, bool is_press) {
+		X_KEY_EVENT(display, key, is_press);
+		microsleep(DEADBEEF_UNIFORM(0.0, 0.5));
+	}
 #endif
 
 #if defined(IS_MACOSX)
-static io_connect_t _getAuxiliaryKeyDriver(void){
-	static mach_port_t sEventDrvrRef = 0;
-	mach_port_t masterPort, service, iter;
-	kern_return_t kr;
-
-	if (!sEventDrvrRef) {
-		kr = IOMasterPort( bootstrap_port, &masterPort );
-		assert(KERN_SUCCESS == kr);
-		kr = IOServiceGetMatchingServices(masterPort, 
-			IOServiceMatching( kIOHIDSystemClass), &iter );
-		assert(KERN_SUCCESS == kr);
-
-		service = IOIteratorNext( iter );
-		assert(service);
-		
-		kr = IOServiceOpen(service, 
-			mach_task_self(), kIOHIDParamConnectType, &sEventDrvrRef );
-		assert(KERN_SUCCESS == kr);
-
-		IOObjectRelease(service);
-		IOObjectRelease(iter);
-	}
-	return sEventDrvrRef;
-}
-#endif
-
-#if defined(IS_WINDOWS)
-void win32KeyEvent(int key, MMKeyFlags flags){
-	int scan = MapVirtualKey(key & 0xff, MAPVK_VK_TO_VSC);
-
-	/* Set the scan code for extended keys */
-	switch (key){
-		case VK_RCONTROL:
-		case VK_SNAPSHOT: /* Print Screen */
-		case VK_RMENU: /* Right Alt / Alt Gr */
-		case VK_PAUSE: /* Pause / Break */
-		case VK_HOME:
-		case VK_UP:
-		case VK_PRIOR: /* Page up */
-		case VK_LEFT:
-		case VK_RIGHT:
-		case VK_END:
-		case VK_DOWN:
-		case VK_NEXT: /* 'Page Down' */
-		case VK_INSERT:
-		case VK_DELETE:
-		case VK_LWIN:
-		case VK_RWIN:
-		case VK_APPS: /* Application */
-		case VK_VOLUME_MUTE:
-		case VK_VOLUME_DOWN:
-		case VK_VOLUME_UP:
-		case VK_MEDIA_NEXT_TRACK:
-		case VK_MEDIA_PREV_TRACK:
-		case VK_MEDIA_STOP:
-		case VK_MEDIA_PLAY_PAUSE:
-		case VK_BROWSER_BACK:
-		case VK_BROWSER_FORWARD:
-		case VK_BROWSER_REFRESH:
-		case VK_BROWSER_STOP:
-		case VK_BROWSER_SEARCH:
-		case VK_BROWSER_FAVORITES:
-		case VK_BROWSER_HOME:
-		case VK_LAUNCH_MAIL:
-		{
-			flags |= KEYEVENTF_EXTENDEDKEY;
-			break;
+	int SendTo(uintptr pid, CGEventRef event) {
+		if (pid != 0) {
+			CGEventPostToPid(pid, event);
+		} else {
+			CGEventPost(kCGSessionEventTap, event);
 		}
+		
+		CFRelease(event);
+		return 0;
 	}
 
-	/* Set the scan code for keyup */
-	// if ( flags & KEYEVENTF_KEYUP ) {
-	// 	scan |= 0x80;
-	// }
+	static io_connect_t _getAuxiliaryKeyDriver(void) {
+		static mach_port_t sEventDrvrRef = 0;
+		mach_port_t masterPort, service, iter;
+		kern_return_t kr;
 
-	// keybd_event(key, scan, flags, 0);
-	
-	INPUT keyInput;
+		if (!sEventDrvrRef) {
+			kr = IOMasterPort(bootstrap_port, &masterPort);
+			assert(KERN_SUCCESS == kr);
+			kr = IOServiceGetMatchingServices(masterPort, IOServiceMatching(kIOHIDSystemClass), &iter);
+			assert(KERN_SUCCESS == kr);
 
-	keyInput.type = INPUT_KEYBOARD;
-	keyInput.ki.wVk = key;
-	keyInput.ki.wScan = scan;
-	keyInput.ki.dwFlags = flags;
-	keyInput.ki.time = 0;
-	keyInput.ki.dwExtraInfo = 0;
-	SendInput(1, &keyInput, sizeof(keyInput));
-}
+			service = IOIteratorNext(iter);
+			assert(service);
+
+			kr = IOServiceOpen(service, mach_task_self(), kIOHIDParamConnectType, &sEventDrvrRef);
+			assert(KERN_SUCCESS == kr);
+
+			IOObjectRelease(service);
+			IOObjectRelease(iter);
+		}
+		return sEventDrvrRef;
+	}
+#elif defined(IS_WINDOWS)
+
+	void win32KeyEvent(int key, MMKeyFlags flags, uintptr pid, int8_t isPid) {
+		int scan = MapVirtualKey(key & 0xff, MAPVK_VK_TO_VSC);
+
+		/* Set the scan code for extended keys */
+		switch (key){
+			case VK_RCONTROL:
+			case VK_SNAPSHOT: /* Print Screen */
+			case VK_RMENU: /* Right Alt / Alt Gr */
+			case VK_PAUSE: /* Pause / Break */
+			case VK_HOME:
+			case VK_UP:
+			case VK_PRIOR: /* Page up */
+			case VK_LEFT:
+			case VK_RIGHT:
+			case VK_END:
+			case VK_DOWN:
+			case VK_NEXT: /* 'Page Down' */
+			case VK_INSERT:
+			case VK_DELETE:
+			case VK_LWIN:
+			case VK_RWIN:
+			case VK_APPS: /* Application */
+			case VK_VOLUME_MUTE:
+			case VK_VOLUME_DOWN:
+			case VK_VOLUME_UP:
+			case VK_MEDIA_NEXT_TRACK:
+			case VK_MEDIA_PREV_TRACK:
+			case VK_MEDIA_STOP:
+			case VK_MEDIA_PLAY_PAUSE:
+			case VK_BROWSER_BACK:
+			case VK_BROWSER_FORWARD:
+			case VK_BROWSER_REFRESH:
+			case VK_BROWSER_STOP:
+			case VK_BROWSER_SEARCH:
+			case VK_BROWSER_FAVORITES:
+			case VK_BROWSER_HOME:
+			case VK_LAUNCH_MAIL:
+			{
+				flags |= KEYEVENTF_EXTENDEDKEY;
+				break;
+			}
+		}
+
+		// todo: test this
+		if (pid != 0) {
+			HWND hwnd = getHwnd(pid, isPid);
+
+			int down = (flags == 0 ? WM_KEYDOWN : WM_KEYUP);
+			// SendMessage(hwnd, down, key, 0);
+			PostMessageW(hwnd, down, key, 0);
+			return;
+		}
+
+		/* Set the scan code for keyup */
+		// if ( flags & KEYEVENTF_KEYUP ) {
+		// 	scan |= 0x80;
+		// }
+		// keybd_event(key, scan, flags, 0);
+		
+		INPUT keyInput;
+
+		keyInput.type = INPUT_KEYBOARD;
+		keyInput.ki.wVk = key;
+		keyInput.ki.wScan = scan;
+		keyInput.ki.dwFlags = flags;
+		keyInput.ki.time = 0;
+		keyInput.ki.dwExtraInfo = 0;
+		SendInput(1, &keyInput, sizeof(keyInput));
+	}
 #endif
 
-void toggleKeyCode(MMKeyCode code, const bool down, MMKeyFlags flags){
+void toggleKeyCode(MMKeyCode code, const bool down, MMKeyFlags flags, uintptr pid) {
 #if defined(IS_MACOSX)
 	/* The media keys all have 1000 added to them to help us detect them. */
 	if (code >= 1000) {
 		code = code - 1000; /* Get the real keycode. */
-		NXEventData   event;
+		NXEventData event;
 		kern_return_t kr;
 
 		IOGPoint loc = { 0, 0 };
@@ -133,48 +175,49 @@ void toggleKeyCode(MMKeyCode code, const bool down, MMKeyFlags flags){
 		event.compound.subType = NX_SUBTYPE_AUX_CONTROL_BUTTONS;
 		event.compound.misc.L[0] = evtInfo;
 
-		kr = IOHIDPostEvent( _getAuxiliaryKeyDriver(), 
-			NX_SYSDEFINED, loc, &event, kNXEventDataVersion, 0, FALSE );
-		assert( KERN_SUCCESS == kr );
+		kr = IOHIDPostEvent(_getAuxiliaryKeyDriver(), 
+								NX_SYSDEFINED, loc, &event, kNXEventDataVersion, 0, FALSE);
+		assert(KERN_SUCCESS == kr);
 	} else {
-		CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL,
-		                            			(CGKeyCode)code, down);
+		CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, (CGKeyCode)code, down);
 		assert(keyEvent != NULL);
 
 		CGEventSetType(keyEvent, down ? kCGEventKeyDown : kCGEventKeyUp);
-		// CGEventSetFlags(keyEvent, flags);
-		CGEventSetFlags(keyEvent, (int) flags);
-		CGEventPost(kCGSessionEventTap, keyEvent);
-		CFRelease(keyEvent);
+		if (flags != 0) {
+			CGEventSetFlags(keyEvent, (CGEventFlags) flags);
+		}
+		
+		SendTo(pid, keyEvent);
 	}
 #elif defined(IS_WINDOWS)
 	const DWORD dwFlags = down ? 0 : KEYEVENTF_KEYUP;
 
 	/* Parse modifier keys. */
-	if (flags & MOD_META) WIN32_KEY_EVENT_WAIT(K_META, dwFlags);
-	if (flags & MOD_ALT) WIN32_KEY_EVENT_WAIT(K_ALT, dwFlags);
-	if (flags & MOD_CONTROL) WIN32_KEY_EVENT_WAIT(K_CONTROL, dwFlags);
-	if (flags & MOD_SHIFT) WIN32_KEY_EVENT_WAIT(K_SHIFT, dwFlags);
+	if (flags & MOD_META) { WIN32_KEY_EVENT_WAIT(K_META, dwFlags, pid); }
+	if (flags & MOD_ALT) { WIN32_KEY_EVENT_WAIT(K_ALT, dwFlags, pid); }
+	if (flags & MOD_CONTROL) { WIN32_KEY_EVENT_WAIT(K_CONTROL, dwFlags, pid); }
+	if (flags & MOD_SHIFT) { WIN32_KEY_EVENT_WAIT(K_SHIFT, dwFlags, pid); }
 
-	win32KeyEvent(code, dwFlags);
+	win32KeyEvent(code, dwFlags, pid, 0);
 #elif defined(USE_X11)
 	Display *display = XGetMainDisplay();
 	const Bool is_press = down ? True : False; /* Just to be safe. */
 
 	/* Parse modifier keys. */
-	if (flags & MOD_META) X_KEY_EVENT_WAIT(display, K_META, is_press);
-	if (flags & MOD_ALT) X_KEY_EVENT_WAIT(display, K_ALT, is_press);
-	if (flags & MOD_CONTROL) X_KEY_EVENT_WAIT(display, K_CONTROL, is_press);
-	if (flags & MOD_SHIFT) X_KEY_EVENT_WAIT(display, K_SHIFT, is_press);
+	if (flags & MOD_META) { X_KEY_EVENT_WAIT(display, K_META, is_press); }
+	if (flags & MOD_ALT) { X_KEY_EVENT_WAIT(display, K_ALT, is_press); }
+	if (flags & MOD_CONTROL) { X_KEY_EVENT_WAIT(display, K_CONTROL, is_press); }
+	if (flags & MOD_SHIFT) { X_KEY_EVENT_WAIT(display, K_SHIFT, is_press); }
 
 	X_KEY_EVENT(display, code, is_press);
 #endif
 }
 
-void tapKeyCode(MMKeyCode code, MMKeyFlags flags){
-	toggleKeyCode(code, true, flags);
-	toggleKeyCode(code, false, flags);
-}
+// void tapKeyCode(MMKeyCode code, MMKeyFlags flags){
+// 	toggleKeyCode(code, true, flags);
+// 	microsleep(5.0);
+// 	toggleKeyCode(code, false, flags);
+// }
 
 #if defined(USE_X11)
 	bool toUpper(char c) {
@@ -193,13 +236,8 @@ void tapKeyCode(MMKeyCode code, MMKeyFlags flags){
 	}
 #endif
 
-void toggleKey(char c, const bool down, MMKeyFlags flags){
+void toggleKey(char c, const bool down, MMKeyFlags flags, uintptr pid) {
 	MMKeyCode keyCode = keyCodeForChar(c);
-
-	//Prevent unused variable warning for Mac and Linux.
-	#if defined(IS_WINDOWS)
-		int modifiers;
-	#endif
 
 	#if defined(USE_X11)
 		if (toUpper(c) && !(flags & MOD_SHIFT)) {
@@ -212,85 +250,60 @@ void toggleKey(char c, const bool down, MMKeyFlags flags){
 	#endif
 
 	#if defined(IS_WINDOWS)
-		modifiers = keyCode >> 8; // Pull out modifers.
-		if ((modifiers & 1) != 0) flags |= MOD_SHIFT; // Uptdate flags from keycode modifiers.
-		if ((modifiers & 2) != 0) flags |= MOD_CONTROL;
-		if ((modifiers & 4) != 0) flags |= MOD_ALT;
+		int modifiers = keyCode >> 8; // Pull out modifers.
+
+		if ((modifiers & 1) != 0) { flags |= MOD_SHIFT; } // Uptdate flags from keycode modifiers.
+		if ((modifiers & 2) != 0) { flags |= MOD_CONTROL; }
+		if ((modifiers & 4) != 0) { flags |= MOD_ALT; }
 		keyCode = keyCode & 0xff; // Mask out modifiers.
 	#endif
 
-	toggleKeyCode(keyCode, down, flags);
+	toggleKeyCode(keyCode, down, flags, pid);
 }
 
-void tapKey(char c, MMKeyFlags flags){
-	toggleKey(c, true, flags);
-	toggleKey(c, false, flags);
-}
+// void tapKey(char c, MMKeyFlags flags){
+// 	toggleKey(c, true, flags);
+// 	microsleep(5.0);
+// 	toggleKey(c, false, flags);
+// }
 
 #if defined(IS_MACOSX)
-void toggleUnicode(UniChar ch, const bool down){
-	/* This function relies on the convenient
-	 * CGEventKeyboardSetUnicodeString(), which allows us to not have to
-	 * convert characters to a keycode, but does not support adding modifier
-	 * flags. It is therefore only used in typeStringDelayed()
-	 * -- if you need modifier keys, use the above functions instead. */
-	CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, 0, down);
-	if (keyEvent == NULL) {
-		fputs("Could not create keyboard event.\n", stderr);
-		return;
+	void toggleUnicode(UniChar ch, const bool down, uintptr pid) {
+		/* This function relies on the convenient CGEventKeyboardSetUnicodeString(), 
+		convert characters to a keycode, but does not support adding modifier flags. 
+		It is only used in typeString().
+		-- if you need modifier keys, use the above functions instead. */
+		CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, 0, down);
+		if (keyEvent == NULL) {
+			fputs("Could not create keyboard event.\n", stderr);
+			return;
+		}
+
+		CGEventKeyboardSetUnicodeString(keyEvent, 1, &ch);
+
+		SendTo(pid, keyEvent);
 	}
-
-	CGEventKeyboardSetUnicodeString(keyEvent, 1, &ch);
-
-	CGEventPost(kCGSessionEventTap, keyEvent);
-	CFRelease(keyEvent);
-}
-#endif
-
-#if defined(USE_X11)
-	#define toggleUniKey(c, down) toggleKey(c, down, MOD_NONE)
-
-	int input_utf(const char *utf) {
-		Display *dpy;
-		dpy = XOpenDisplay(NULL);
-
-		KeySym sym = XStringToKeysym(utf);
-		// KeySym sym = XKeycodeToKeysym(dpy, utf);
-
-		int min, max, numcodes;
-		XDisplayKeycodes(dpy, &min, &max);
-		KeySym *keysym;
-		keysym = XGetKeyboardMapping(dpy, min, max-min+1, &numcodes);
-		keysym[(max-min-1)*numcodes] = sym;
-		XChangeKeyboardMapping(dpy, min, numcodes, keysym, (max-min));
-		XFree(keysym);
-		XFlush(dpy);
-
-		KeyCode code = XKeysymToKeycode(dpy, sym);
-
-		XTestFakeKeyEvent(dpy, code, True, 1);
-		XTestFakeKeyEvent(dpy, code, False, 1);
-
-		XFlush(dpy);
-		XCloseDisplay(dpy);
-
-		return 0;
-	}
-#endif
-#if !defined(USE_X11)
-	int input_utf(const char *utf){
-		return 0;
-	}
+#else
+	#define toggleUniKey(c, down) toggleKey(c, down, MOD_NONE, 0)
 #endif
 
 // unicode type
-void unicodeType(const unsigned value){
+void unicodeType(const unsigned value, uintptr pid, int8_t isPid) {
 	#if defined(IS_MACOSX)
 		UniChar ch = (UniChar)value; // Convert to unsigned char
 
-		toggleUnicode(ch, true);
-		toggleUnicode(ch, false);
+		toggleUnicode(ch, true, pid);
+		microsleep(5.0);
+		toggleUnicode(ch, false, pid);
 	#elif defined(IS_WINDOWS)
+		if (pid != 0) {
+			HWND hwnd = getHwnd(pid, isPid);
+
+			// SendMessage(hwnd, down, value, 0);
+			PostMessageW(hwnd, WM_CHAR, value, 0);
+			return;
+		}
+
 		INPUT input[2];
         memset(input, 0, sizeof(input));
 
@@ -307,53 +320,36 @@ void unicodeType(const unsigned value){
   		SendInput(2, input, sizeof(INPUT));
 	#elif defined(USE_X11)
 		toggleUniKey(value, true);
+		microsleep(5.0);
 		toggleUniKey(value, false);	
 	#endif
 }
 
-void typeStringDelayed(const char *str, const unsigned cpm){
-	
-	/* Characters per second */
-	const double cps = (double)cpm / 60.0;
+#if defined(USE_X11)
+	int input_utf(const char *utf) {
+		Display *dpy = XOpenDisplay(NULL);
+		KeySym sym = XStringToKeysym(utf);
+		// KeySym sym = XKeycodeToKeysym(dpy, utf);
 
-	/* Average milli-seconds per character */
-	const double mspc = (cps == 0.0) ? 0.0 : 1000.0 / cps;
+		int min, max, numcodes;
+		XDisplayKeycodes(dpy, &min, &max);
+		KeySym *keysym;
+		keysym = XGetKeyboardMapping(dpy, min, max-min+1, &numcodes);
+		keysym[(max-min-1)*numcodes] = sym;
+		XChangeKeyboardMapping(dpy, min, numcodes, keysym, (max-min));
+		XFree(keysym);
+		XFlush(dpy);
 
-	unsigned long n;
-	unsigned short c;
-	unsigned short c1;
-	unsigned short c2;
-	unsigned short c3;
+		KeyCode code = XKeysymToKeycode(dpy, sym);
+		XTestFakeKeyEvent(dpy, code, True, 1);
+		XTestFakeKeyEvent(dpy, code, False, 1);
 
-	while (*str != '\0') {
-		c = *str++;
-
-		// warning, the following utf8 decoder
-		// doesn't perform validation
-		if (c <= 0x7F) {
-			// 0xxxxxxx one byte
-			n = c;
-		} else if ((c & 0xE0) == 0xC0)  {
-			// 110xxxxx two bytes
-			c1 = (*str++) & 0x3F;
-			n = ((c & 0x1F) << 6) | c1;
-		} else if ((c & 0xF0) == 0xE0) {
-			// 1110xxxx three bytes
-			c1 = (*str++) & 0x3F;
-			c2 = (*str++) & 0x3F;
-			n = ((c & 0x0F) << 12) | (c1 << 6) | c2;
-		} else if ((c & 0xF8) == 0xF0) {
-			// 11110xxx four bytes
-			c1 = (*str++) & 0x3F;
-			c2 = (*str++) & 0x3F;
-			c3 = (*str++) & 0x3F;
-			n = ((c & 0x07) << 18) | (c1 << 12) | (c2 << 6) | c3;
-		}
-
-		unicodeType(n);
-
-		if (mspc > 0) {
-			microsleep(mspc + (DEADBEEF_UNIFORM(0.0, 0.5)));
-		}
+		XFlush(dpy);
+		XCloseDisplay(dpy);
+		return 0;
 	}
-}
+#else
+	int input_utf(const char *utf){
+		return 0;
+	}
+#endif

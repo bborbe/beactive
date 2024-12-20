@@ -17,20 +17,19 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/lxn/win"
+	// "github.com/lxn/win"
+	"github.com/tailscale/win"
 )
 
 // FindWindow find window hwnd by name
-func FindWindow(str string) win.HWND {
-	hwnd := win.FindWindow(nil, syscall.StringToUTF16Ptr(str))
-
+func FindWindow(name string) win.HWND {
+	hwnd := win.FindWindow(nil, syscall.StringToUTF16Ptr(name))
 	return hwnd
 }
 
 // GetHWND get foreground window hwnd
 func GetHWND() win.HWND {
 	hwnd := win.GetForegroundWindow()
-
 	return hwnd
 }
 
@@ -50,6 +49,63 @@ func SetActiveWindow(hwnd win.HWND) win.HWND {
 }
 
 // SetFocus set window focus with hwnd
-func SetFocus(hWnd win.HWND) win.HWND {
-	return win.SetFocus(hWnd)
+func SetFocus(hwnd win.HWND) win.HWND {
+	return win.SetFocus(hwnd)
+}
+
+// SetForeg set the window into the foreground by hwnd
+func SetForeg(hwnd win.HWND) bool {
+	return win.SetForegroundWindow(hwnd)
+}
+
+// GetMain get the main display hwnd
+func GetMain() win.HWND {
+	return win.GetActiveWindow()
+}
+
+// GetMainId get the main display id
+func GetMainId() int {
+	return int(GetMain())
+}
+
+// ScaleF get the system scale value
+// if "displayId == -2" this function will get the desktop scale value
+func ScaleF(displayId ...int) (f float64) {
+	if len(displayId) > 0 && displayId[0] != -1 {
+		if displayId[0] >= 0 {
+			dpi := GetDPI(win.HWND(displayId[0]))
+			f = float64(dpi) / 96.0
+		}
+
+		if displayId[0] == -2 {
+			f = float64(GetDPI(GetDesktopWindow())) / 96.0
+		}
+	} else {
+		f = float64(GetMainDPI()) / 96.0
+	}
+
+	if f == 0.0 {
+		f = 1.0
+	}
+	return f
+}
+
+// GetDesktopWindow get the desktop window hwnd id
+func GetDesktopWindow() win.HWND {
+	return win.GetDesktopWindow()
+}
+
+// GetMainDPI get the display dpi
+func GetMainDPI() int {
+	return int(GetDPI(GetHWND()))
+}
+
+// GetDPI get the window dpi
+func GetDPI(hwnd win.HWND) uint32 {
+	return win.GetDpiForWindow(hwnd)
+}
+
+// GetSysDPI get the system metrics dpi
+func GetSysDPI(idx int32, dpi uint32) int32 {
+	return win.GetSystemMetricsForDpi(idx, dpi)
 }

@@ -12,6 +12,7 @@ package robotgo
 
 import (
 	"image"
+	"os/exec"
 	"unsafe"
 
 	"github.com/vcaesar/imgo"
@@ -33,8 +34,8 @@ func Read(path string) (image.Image, error) {
 }
 
 // Save create a image file with the image.Image
-func Save(img image.Image, path string) error {
-	return imgo.Save(path, img)
+func Save(img image.Image, path string, quality ...int) error {
+	return imgo.Save(path, img, quality...)
 }
 
 // SaveImg save the image by []byte
@@ -48,13 +49,13 @@ func SavePng(img image.Image, path string) error {
 }
 
 // SaveJpeg save the image by image.Image
-func SaveJpeg(img image.Image, path string) error {
-	return imgo.SaveToJpeg(path, img)
+func SaveJpeg(img image.Image, path string, quality ...int) error {
+	return imgo.SaveToJpeg(path, img, quality...)
 }
 
 // ToByteImg convert image.Image to []byte
 func ToByteImg(img image.Image, fm ...string) []byte {
-	return imgo.ToByteImg(img, fm...)
+	return imgo.ToByte(img, fm...)
 }
 
 // ToStringImg convert image.Image to string
@@ -121,7 +122,7 @@ func ImgToBitmap(m image.Image) (bit Bitmap) {
 // ToUint8p convert the []uint8 to uint8 pointer
 func ToUint8p(dst []uint8) *uint8 {
 	src := make([]uint8, len(dst)+10)
-	for i := 0; i < len(dst)-4; i += 4 {
+	for i := 0; i <= len(dst)-4; i += 4 {
 		src[i+3] = dst[i+3]
 		src[i] = dst[i+2]
 		src[i+1] = dst[i+1]
@@ -150,10 +151,31 @@ func val(p *uint8, n int) uint8 {
 }
 
 func copyToVUint8A(dst []uint8, src *uint8) {
-	for i := 0; i < len(dst)-4; i += 4 {
+	for i := 0; i <= len(dst)-4; i += 4 {
 		dst[i] = val(src, i+2)
 		dst[i+1] = val(src, i+1)
 		dst[i+2] = val(src, i)
 		dst[i+3] = val(src, i+3)
 	}
+}
+
+// GetText get the image text by tesseract ocr
+//
+// robotgo.GetText(imgPath, lang string)
+func GetText(imgPath string, args ...string) (string, error) {
+	var lang = "eng"
+
+	if len(args) > 0 {
+		lang = args[0]
+		if lang == "zh" {
+			lang = "chi_sim"
+		}
+	}
+
+	body, err := exec.Command("tesseract", imgPath,
+		"stdout", "-l", lang).Output()
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
 }

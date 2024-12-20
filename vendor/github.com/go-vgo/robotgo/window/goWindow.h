@@ -12,53 +12,23 @@
 #include "window.h"
 #include "win_sys.h"
 
-int show_alert(const char *title, const char *msg,
-	const char *defaultButton, const char *cancelButton){
-		
-	int alert = showAlert(title, msg, defaultButton, cancelButton);
-	return alert;
-}
-
-intptr scale_x(){
-	return scaleX();
-}
-
-intptr scale_y(){
-	return scaleY();
-}
-
-bool is_valid(){
-	bool abool = IsValid();
-	return abool;
-}
-
-// int find_window(char* name){
-// 	int z = findwindow(name);
-// 	return z;
-// }
-
-void min_window(uintptr pid, bool state, uintptr isHwnd){
+void min_window(uintptr pid, bool state, int8_t isPid){
 	#if defined(IS_MACOSX)
 		// return 0;
 		AXUIElementRef axID = AXUIElementCreateApplication(pid);
-		
-		AXUIElementSetAttributeValue(axID, kAXMinimizedAttribute,
-		state ? kCFBooleanTrue : kCFBooleanFalse);
+		AXUIElementSetAttributeValue(axID, kAXMinimizedAttribute, 
+										state ? kCFBooleanTrue : kCFBooleanFalse);
 	#elif defined(USE_X11)
 		// Ignore X errors
 		XDismissErrors();
 		// SetState((Window)pid, STATE_MINIMIZE, state);
 	#elif defined(IS_WINDOWS)
-		if (isHwnd == 0) {
-			HWND hwnd = GetHwndByPId(pid);
-			win_min(hwnd, state);
-		} else {
-			win_min((HWND)pid, state);
-		}
+        HWND hwnd = getHwnd(pid, isPid);
+		win_min(hwnd, state);
 	#endif
 }
 
-void max_window(uintptr pid, bool state, uintptr isHwnd){
+void max_window(uintptr pid, bool state, int8_t isPid){
 	#if defined(IS_MACOSX)
 		// return 0;
 	#elif defined(USE_X11)
@@ -66,26 +36,13 @@ void max_window(uintptr pid, bool state, uintptr isHwnd){
 		// SetState((Window)pid, STATE_MINIMIZE, false);
 		// SetState((Window)pid, STATE_MAXIMIZE, state);
 	#elif defined(IS_WINDOWS)
-		if (isHwnd == 0) {
-			HWND hwnd = GetHwndByPId(pid);
-			win_max(hwnd, state);
-		} else {
-			win_max((HWND)pid, state);
-		}
+        HWND hwnd = getHwnd(pid, isPid);
+		win_max(hwnd, state);
 	#endif
 }
 
-void close_window(uintptr pid, uintptr isHwnd){
-	close_window_by_PId(pid, isHwnd);
-}
-
-bool set_handle(uintptr handle){
-	bool hwnd = setHandle(handle);
-	return hwnd;
-}
-
 uintptr get_handle(){
-	MData mData = GetActive();
+	MData mData = get_active();
 
 	#if defined(IS_MACOSX)
 		return (uintptr)mData.CgID;
@@ -96,32 +53,17 @@ uintptr get_handle(){
 	#endif
 }
 
-uintptr bget_handle(){
-	uintptr hwnd = getHandle();
-	return hwnd;
+uintptr b_get_handle() {
+	#if defined(IS_MACOSX)
+		return (uintptr)pub_mData.CgID;
+	#elif defined(USE_X11)
+		return (uintptr)pub_mData.XWin;
+	#elif defined(IS_WINDOWS)
+		return (uintptr)pub_mData.HWnd;
+	#endif
 }
 
-void set_active(const MData win){
-	SetActive(win);
-}
-
-void active_PID(uintptr pid, uintptr isHwnd){
-	MData win = set_handle_pid(pid, isHwnd);
-	SetActive(win);
-}
-
-MData get_active(){
-	MData mdata = GetActive();
-	return mdata;
-}
-
-char* get_title(uintptr pid, uintptr isHwnd){
-	char* title = get_title_by_pid(pid, isHwnd);
-	// printf("title::::%s\n", title );
-	return title;
-}
-
-int32 get_PID(void){
-	int pid = WGetPID();
-	return pid;
+void active_PID(uintptr pid, int8_t isPid){
+	MData win = set_handle_pid(pid, isPid);
+	set_active(win);
 }
