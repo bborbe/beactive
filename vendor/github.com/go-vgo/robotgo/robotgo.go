@@ -31,10 +31,10 @@ package robotgo
 
 /*
 #cgo darwin CFLAGS: -x objective-c -Wno-deprecated-declarations
-#cgo darwin LDFLAGS: -framework Cocoa -framework OpenGL -framework IOKit
-#cgo darwin LDFLAGS: -framework Carbon -framework CoreFoundation
+#cgo darwin LDFLAGS: -framework Cocoa -framework CoreFoundation -framework IOKit
+#cgo darwin LDFLAGS: -framework Carbon -framework OpenGL
 //
-#if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ > MAC_OS_VERSION_14_4
+#if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ > 140400
 #cgo darwin LDFLAGS: -framework ScreenCaptureKit
 #endif
 
@@ -73,7 +73,7 @@ var (
 	// MouseSleep set the mouse default millisecond sleep time
 	MouseSleep = 0
 	// KeySleep set the key default millisecond sleep time
-	KeySleep = 0
+	KeySleep = 10
 
 	// DisplayID set the screen display id
 	DisplayID = -1
@@ -506,7 +506,7 @@ func CheckMouse(btn string) C.MMMouseButton {
 
 // MoveScale calculate the os scale factor x, y
 func MoveScale(x, y int, displayId ...int) (int, int) {
-	if Scale && runtime.GOOS == "windows" {
+	if Scale || runtime.GOOS == "windows" {
 		f := ScaleF()
 		x, y = Scaled1(x, f), Scaled1(y, f)
 	}
@@ -630,7 +630,7 @@ func Location() (int, int) {
 	x := int(pos.x)
 	y := int(pos.y)
 
-	if runtime.GOOS == "windows" {
+	if Scale || runtime.GOOS == "windows" {
 		f := ScaleF()
 		x, y = Scaled0(x, f), Scaled0(y, f)
 	}
