@@ -1,10 +1,8 @@
 package zglob
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -20,41 +18,21 @@ var (
 )
 
 type zenv struct {
-	dirmask string
+	dre     *regexp.Regexp
 	fre     *regexp.Regexp
 	pattern string
 	root    string
 }
 
-func toSlash(path string) string {
-	if filepath.Separator == '/' {
-		return path
-	}
-	var buf bytes.Buffer
-	cc := []rune(path)
-	for i := 0; i < len(cc); i++ {
-		if i < len(cc)-2 && cc[i] == '\\' && (cc[i+1] == '{' || cc[i+1] == '}') {
-			buf.WriteRune(cc[i])
-			buf.WriteRune(cc[i+1])
-			i++
-		} else if cc[i] == '\\' {
-			buf.WriteRune('/')
-		} else {
-			buf.WriteRune(cc[i])
-		}
-	}
-	return buf.String()
-}
-
 func New(pattern string) (*zenv, error) {
 	globmask := ""
 	root := ""
-	for n, i := range strings.Split(toSlash(pattern), "/") {
-		if root == "" && strings.ContainsAny(i, "*{") {
+	for n, i := range strings.Split(filepath.ToSlash(pattern), "/") {
+		if root == "" && strings.Index(i, "*") != -1 {
 			if globmask == "" {
 				root = "."
 			} else {
-				root = toSlash(globmask)
+				root = filepath.ToSlash(globmask)
 			}
 		}
 		if n == 0 && i == "~" {
@@ -68,7 +46,7 @@ func New(pattern string) (*zenv, error) {
 			i = strings.Trim(strings.Trim(os.Getenv(i[1:]), "()"), `"`)
 		}
 
-		globmask = path.Join(globmask, i)
+		globmask = filepath.Join(globmask, i)
 		if n == 0 {
 			if runtime.GOOS == "windows" && filepath.VolumeName(i) != "" {
 				globmask = i + "/"
@@ -79,7 +57,7 @@ func New(pattern string) (*zenv, error) {
 	}
 	if root == "" {
 		return &zenv{
-			dirmask: "",
+			dre:     nil,
 			fre:     nil,
 			pattern: pattern,
 			root:    "",
@@ -88,123 +66,50 @@ func New(pattern string) (*zenv, error) {
 	if globmask == "" {
 		globmask = "."
 	}
-	globmask = toSlash(path.Clean(globmask))
+	globmask = filepath.ToSlash(filepath.Clean(globmask))
 
 	cc := []rune(globmask)
-	var dirmask strings.Builder
-	var filemask strings.Builder
-	staticDir := true
+	dirmask := ""
+	filemask := ""
 	for i := 0; i < len(cc); i++ {
-		if i < len(cc)-2 && cc[i] == '\\' {
-			i++
-			fmt.Fprintf(&filemask, "[\\x%02X]", cc[i])
-			if staticDir {
-				dirmask.WriteRune(cc[i])
-			}
-		} else if cc[i] == '*' {
-			staticDir = false
+		if cc[i] == '*' {
 			if i < len(cc)-2 && cc[i+1] == '*' && cc[i+2] == '/' {
-				filemask.WriteString("(.*/)?")
+				filemask += "(.*/)?"
+				if dirmask == "" {
+					dirmask = filemask
+				}
 				i += 2
 			} else {
-				filemask.WriteString("[^/]*")
-			}
-		} else if cc[i] == '[' { // range
-			staticDir = false
-			var b strings.Builder
-			for j := i + 1; j < len(cc); j++ {
-				if cc[j] == ']' {
-					i = j
-					break
-				} else {
-					b.WriteRune(cc[j])
-				}
-			}
-			if pattern := b.String(); pattern != "" {
-				filemask.WriteByte('[')
-				filemask.WriteString(pattern)
-				filemask.WriteByte(']')
-				continue
+				filemask += "[^/]*"
 			}
 		} else {
-			if cc[i] == '{' {
-				staticDir = false
-				var b strings.Builder
-				for j := i + 1; j < len(cc); j++ {
-					if cc[j] == ',' {
-						b.WriteByte('|')
-					} else if cc[j] == '}' {
-						i = j
-						break
-					} else {
-						c := cc[j]
-						if c == '/' {
-							b.WriteRune(c)
-						} else if ('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || 255 < c {
-							b.WriteRune(c)
-						} else {
-							fmt.Fprintf(&b, "[\\x%02X]", c)
-						}
-					}
-				}
-				if pattern := b.String(); pattern != "" {
-					filemask.WriteByte('(')
-					filemask.WriteString(pattern)
-					filemask.WriteByte(')')
-					continue
-				}
-			} else if i < len(cc)-1 && cc[i] == '!' && cc[i+1] == '(' {
-				i++
-				var b strings.Builder
-				for j := i + 1; j < len(cc); j++ {
-					if cc[j] == ')' {
-						i = j
-						break
-					} else {
-						c := cc[j]
-						fmt.Fprintf(&b, "[^\\x%02X/]*", c)
-					}
-				}
-				if pattern := b.String(); pattern != "" {
-					if dirmask.Len() == 0 {
-						m := filemask.String()
-						dirmask.WriteString(m)
-						root = m
-					}
-					filemask.WriteString(pattern)
-					continue
-				}
-			}
 			c := cc[i]
 			if c == '/' || ('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || 255 < c {
-				filemask.WriteRune(c)
+				filemask += string(c)
 			} else {
-				fmt.Fprintf(&filemask, "[\\x%02X]", c)
+				filemask += fmt.Sprintf("[\\x%02X]", c)
 			}
-			if staticDir {
-				dirmask.WriteRune(c)
+			if c == '/' && dirmask == "" && strings.Index(filemask, "*") != -1 {
+				dirmask = filemask
 			}
 		}
 	}
-	if m := filemask.String(); len(m) > 0 && m[len(m)-1] == '/' {
+	if dirmask == "" {
+		dirmask = filemask
+	}
+	if len(filemask) > 0 && filemask[len(filemask)-1] == '/' {
 		if root == "" {
-			root = m
+			root = filemask
 		}
-		filemask.WriteString("[^/]*")
+		filemask += "[^/]*"
 	}
-	var pat string
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		pat = "^(?i:" + filemask.String() + ")$"
-	} else {
-		pat = "^" + filemask.String() + "$"
-	}
-	fre, err := regexp.Compile(pat)
-	if err != nil {
-		return nil, err
+		dirmask = "(?i:" + dirmask + ")"
+		filemask = "(?i:" + filemask + ")"
 	}
 	return &zenv{
-		dirmask: path.Dir(dirmask.String()) + "/",
-		fre:     fre,
+		dre:     regexp.MustCompile("^" + dirmask),
+		fre:     regexp.MustCompile("^" + filemask + "$"),
 		pattern: pattern,
 		root:    filepath.Clean(root),
 	}, nil
@@ -233,7 +138,7 @@ func glob(pattern string, followSymlinks bool) ([]string, error) {
 	relative := !filepath.IsAbs(pattern)
 	matches := []string{}
 
-	err = fastwalk.FastWalk(zenv.root, func(path string, info os.FileMode) error {
+	fastwalk.FastWalk(zenv.root, func(path string, info os.FileMode) error {
 		if zenv.root == "." && len(zenv.root) < len(path) {
 			path = path[len(zenv.root)+1:]
 		}
@@ -259,7 +164,7 @@ func glob(pattern string, followSymlinks bool) ([]string, error) {
 				mu.Unlock()
 				return nil
 			}
-			if len(path) < len(zenv.dirmask) && !strings.HasPrefix(zenv.dirmask, path+"/") {
+			if !zenv.dre.MatchString(path + "/") {
 				return filepath.SkipDir
 			}
 		}
@@ -274,11 +179,6 @@ func glob(pattern string, followSymlinks bool) ([]string, error) {
 		}
 		return nil
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
 	return matches, nil
 }
 

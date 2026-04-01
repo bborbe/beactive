@@ -1,11 +1,12 @@
-// Copyright 2016 The go-vgo Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
+// Copyright (c) 2016-2025 AtomAI, All rights reserved.
+//
+// See the COPYRIGHT file at the top-level directory of this distribution and at
 // https://github.com/go-vgo/robotgo/blob/master/LICENSE
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
+// http://www.apache.org/licenses/LICENSE-2.0>
+//
+// This file may not be copied, modified, or distributed
 // except according to those terms.
 
 package robotgo
@@ -86,16 +87,19 @@ const (
 	CapY = "Y"
 	CapZ = "Z"
 	//
-	Key0 = "0"
-	Key1 = "1"
-	Key2 = "2"
-	Key3 = "3"
-	Key4 = "4"
-	Key5 = "5"
-	Key6 = "6"
-	Key7 = "7"
-	Key8 = "8"
-	Key9 = "9"
+	Key0      = "0"
+	Key1      = "1"
+	Key2      = "2"
+	Key3      = "3"
+	Key4      = "4"
+	Key5      = "5"
+	Key6      = "6"
+	Key7      = "7"
+	Key8      = "8"
+	Key9      = "9"
+	KeyGrave  = "`"
+	KeyQuoter = '"'
+	KeyQuote  = "'"
 
 	// Backspace backspace key string
 	Backspace = "backspace"
@@ -404,6 +408,13 @@ func getFlagsFromValue(value []string) (flags C.MMKeyFlags) {
 	return
 }
 
+func upKeyArr(keyArr []string, pid int) {
+	for i := 0; i < len(keyArr); i++ {
+		key1, _ := checkKeyCodes(keyArr[i])
+		C.toggleKeyCode(key1, false, C.MOD_NONE, C.uintptr(pid))
+	}
+}
+
 func keyTaps(k string, keyArr []string, pid int) error {
 	flags := getFlagsFromValue(keyArr)
 	key, err := checkKeyCodes(k)
@@ -413,10 +424,11 @@ func keyTaps(k string, keyArr []string, pid int) error {
 
 	tapKeyCode(key, flags, C.uintptr(pid))
 	MilliSleep(KeySleep)
+	upKeyArr(keyArr, pid)
 	return nil
 }
 
-func keyToggles(k string, keyArr []string, pid int) error {
+func getKeyDown(keyArr []string) (bool, []string) {
 	if len(keyArr) <= 0 {
 		keyArr = append(keyArr, "down")
 	}
@@ -429,8 +441,11 @@ func keyToggles(k string, keyArr []string, pid int) error {
 	if keyArr[0] == "up" || keyArr[0] == "down" {
 		keyArr = keyArr[1:]
 	}
-	flags := getFlagsFromValue(keyArr)
+	return down, keyArr
+}
 
+func keyTogglesB(k string, down bool, keyArr []string, pid int) error {
+	flags := getFlagsFromValue(keyArr)
 	key, err := checkKeyCodes(k)
 	if err != nil {
 		return err
@@ -438,7 +453,15 @@ func keyToggles(k string, keyArr []string, pid int) error {
 
 	C.toggleKeyCode(key, C.bool(down), flags, C.uintptr(pid))
 	MilliSleep(KeySleep)
+	if !down {
+		upKeyArr(keyArr, pid)
+	}
 	return nil
+}
+
+func keyToggles(k string, keyArr []string, pid int) error {
+	down, keyArr1 := getKeyDown(keyArr)
+	return keyTogglesB(k, down, keyArr1, pid)
 }
 
 /*
@@ -478,6 +501,22 @@ func toErr(str *C.char) error {
 	return errors.New(gstr)
 }
 
+func appendShift(key string, len1 int, args ...interface{}) (string, []interface{}) {
+	if len(key) > 0 && unicode.IsUpper([]rune(key)[0]) {
+		args = append(args, "shift")
+	}
+
+	key = strings.ToLower(key)
+	if _, ok := Special[key]; ok {
+		key = Special[key]
+		if len(args) <= len1 {
+			args = append(args, "shift")
+		}
+	}
+
+	return key, args
+}
+
 // KeyTap taps the keyboard code;
 //
 // See keys supported:
@@ -496,18 +535,7 @@ func toErr(str *C.char) error {
 //	robotgo.KeyTap("k", pid int)
 func KeyTap(key string, args ...interface{}) error {
 	var keyArr []string
-
-	if len(key) > 0 && unicode.IsUpper([]rune(key)[0]) {
-		args = append(args, "shift")
-	}
-
-	key = strings.ToLower(key)
-	if _, ok := Special[key]; ok {
-		key = Special[key]
-		if len(args) <= 0 {
-			args = append(args, "shift")
-		}
-	}
+	key, args = appendShift(key, 0, args...)
 
 	pid := 0
 	if len(args) > 0 {
@@ -526,6 +554,16 @@ func KeyTap(key string, args ...interface{}) error {
 	return keyTaps(key, keyArr, pid)
 }
 
+func getToggleArgs(args ...interface{}) (pid int, keyArr []string) {
+	if len(args) > 0 && reflect.TypeOf(args[0]) == reflect.TypeOf(pid) {
+		pid = args[0].(int)
+		keyArr = ToStrings(args[1:])
+	} else {
+		keyArr = ToStrings(args)
+	}
+	return
+}
+
 // KeyToggle toggles the keyboard, if there not have args default is "down"
 //
 // See keys:
@@ -540,28 +578,8 @@ func KeyTap(key string, args ...interface{}) error {
 //	robotgo.KeyToggle("a", "up", "alt", "cmd")
 //	robotgo.KeyToggle("k", pid int)
 func KeyToggle(key string, args ...interface{}) error {
-
-	if len(key) > 0 && unicode.IsUpper([]rune(key)[0]) {
-		args = append(args, "shift")
-	}
-
-	key = strings.ToLower(key)
-	if _, ok := Special[key]; ok {
-		key = Special[key]
-		if len(args) <= 1 {
-			args = append(args, "shift")
-		}
-	}
-
-	pid := 0
-	var keyArr []string
-	if len(args) > 0 && reflect.TypeOf(args[0]) == reflect.TypeOf(pid) {
-		pid = args[0].(int)
-		keyArr = ToStrings(args[1:])
-	} else {
-		keyArr = ToStrings(args)
-	}
-
+	key, args = appendShift(key, 1, args...)
+	pid, keyArr := getToggleArgs(args...)
 	return keyToggles(key, keyArr, pid)
 }
 
@@ -655,15 +673,22 @@ func inputUTF(str string) {
 	C.free(unsafe.Pointer(cstr))
 }
 
-// TypeStr send a string (supported UTF-8)
+// TypeStr tap a string
 //
-// robotgo.TypeStr(string: "The string to send", int: pid, "milli_sleep time", "x11 option")
+// Deprecated: use the Type()
+func TypeStr(str string, args ...int) {
+	Type(str, args...)
+}
+
+// Type type a string (supported UTF-8)
+//
+// robotgo.Type(string: "The string to send", int: pid, "milli_sleep time", "x11 option")
 //
 // Examples:
 //
-//	robotgo.TypeStr("abc@123, Hi galaxy, こんにちは")
-//	robotgo.TypeStr("To be or not to be, this is questions.", pid int)
-func TypeStr(str string, args ...int) {
+//	robotgo.Type("abc@123, Hi galaxy, こんにちは")
+//	robotgo.Type("To be or not to be, this is questions.", pid int)
+func Type(str string, args ...int) {
 	var tm, tm1 = 0, 7
 
 	if len(args) > 1 {
@@ -704,14 +729,25 @@ func TypeStr(str string, args ...int) {
 	MilliSleep(KeySleep)
 }
 
-// PasteStr paste a string (support UTF-8),
-// write the string to clipboard and tap `cmd + v`
+// PasteStr paste a string
+//
+// Deprecated: use the Paste()
 func PasteStr(str string) error {
+	return Paste(str)
+}
+
+// Paste paste a string (supported UTF-8),
+// write the string to clipboard and tap `cmd + v`
+func Paste(str string) error {
 	err := clipboard.WriteAll(str)
 	if err != nil {
 		return err
 	}
+	return CmdV()
+}
 
+// CmdV tap key command + v or control + v
+func CmdV() error {
 	if runtime.GOOS == "darwin" {
 		return KeyTap("v", "command")
 	}
@@ -719,9 +755,16 @@ func PasteStr(str string) error {
 	return KeyTap("v", "control")
 }
 
-// TypeStrDelay type string with delayed
-// And you can use robotgo.KeySleep = 100 to delayed not this function
+// TypeStrDelay type string width delay
+//
+// Deprecated: use the TypeDelay()
 func TypeStrDelay(str string, delay int) {
+	TypeDelay(str, delay)
+}
+
+// TypeDelay type string with delayed
+// And you can use robotgo.KeySleep = 100 to delayed not this function
+func TypeDelay(str string, delay int) {
 	TypeStr(str)
 	MilliSleep(delay)
 }

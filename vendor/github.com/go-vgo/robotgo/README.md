@@ -1,25 +1,21 @@
 # Robotgo
 
-<!--<img align="right" src="https://raw.githubusercontent.com/go-vgo/robotgo/master/logo.jpg">-->
-<!--[![Build Status](https://travis-ci.org/go-vgo/robotgo.svg)](https://travis-ci.org/go-vgo/robotgo)
-[![codecov](https://codecov.io/gh/go-vgo/robotgo/branch/master/graph/badge.svg)](https://codecov.io/gh/go-vgo/robotgo)-->
-<!--<a href="https://circleci.com/gh/go-vgo/robotgo/tree/dev"><img src="https://img.shields.io/circleci/project/go-vgo/robotgo/dev.svg" alt="Build Status"></a>-->
+<!-- <img align="right" src="https://raw.githubusercontent.com/go-vgo/robotgo/master/logo.jpg"> -->
+<!-- [![codecov](https://codecov.io/gh/go-vgo/robotgo/branch/master/graph/badge.svg)](https://codecov.io/gh/go-vgo/robotgo) -->
 
 [![Build Status](https://github.com/go-vgo/robotgo/workflows/Go/badge.svg)](https://github.com/go-vgo/robotgo/commits/master)
 [![CircleCI Status](https://circleci.com/gh/go-vgo/robotgo.svg?style=shield)](https://circleci.com/gh/go-vgo/robotgo)
-[![Build Status](https://travis-ci.org/go-vgo/robotgo.svg)](https://travis-ci.org/go-vgo/robotgo)
 ![Appveyor](https://ci.appveyor.com/api/projects/status/github/go-vgo/robotgo?branch=master&svg=true)
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-vgo/robotgo)](https://goreportcard.com/report/github.com/go-vgo/robotgo)
 [![GoDoc](https://pkg.go.dev/badge/github.com/go-vgo/robotgo?status.svg)](https://pkg.go.dev/github.com/go-vgo/robotgo?tab=doc)
 [![GitHub release](https://img.shields.io/github/release/go-vgo/robotgo.svg)](https://github.com/go-vgo/robotgo/releases/latest)
-[![Join the chat at https://gitter.im/go-vgo/robotgo](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/go-vgo/robotgo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-<!-- [![Release](https://github-release-version.herokuapp.com/github/go-vgo/robotgo/release.svg?style=flat)](https://github.com/go-vgo/robotgo/releases/latest) -->
-<!-- <a href="https://github.com/go-vgo/robotgo/releases"><img src="https://img.shields.io/badge/%20version%20-%206.0.0%20-blue.svg?style=flat-square" alt="Releases"></a> -->
+> Golang Desktop Automation, auto test and AI Computer Use. <br>
+> Control the mouse, keyboard, read the screen, process, Window Handle, image and bitmap and global event listener.
 
-> Golang Desktop Automation. Control the mouse, keyboard, read the screen, process, Window Handle, image and bitmap and global event listener.
+RobotGo supports Mac, Windows, and Linux (X11); and robotgo supports arm64 and x86-amd64.
 
-RobotGo supports Mac, Windows, and Linux(X11); and robotgo supports arm64 and x86-amd64.
+[RobotGo-Pro](https://github.com/vcaesar/robotgo-pro) get the JavaScript, Python, Lua and others version, tech supports, new features and newest robotgo version (such as Wayland support, "no open-source version forever").
 
 ## Contents
 
@@ -33,8 +29,6 @@ RobotGo supports Mac, Windows, and Linux(X11); and robotgo supports arm64 and x8
 - [Cross-Compiling](https://github.com/go-vgo/robotgo/blob/master/docs/install.md#crosscompiling)
 - [Authors](#authors)
 - [Plans](#plans)
-- [Donate](#donate)
-- [Contributors](#contributors)
 - [License](#license)
 
 ## Docs
@@ -45,8 +39,6 @@ RobotGo supports Mac, Windows, and Linux(X11); and robotgo supports arm64 and x8
 ## Binding:
 
 [ADB](https://github.com/vcaesar/adb), packaging android adb API.
-
-[Robotn](https://github.com/vcaesar/robotn), binding JavaScript and other, support more language.
 
 ## Requirements:
 
@@ -61,31 +53,41 @@ GCC
 ```
 
 #### For MacOS:
+
 ```
 brew install go
 ```
 
-Xcode Command Line Tools (And Privacy setting: [#277](https://github.com/go-vgo/robotgo/issues/277))
+Xcode Command Line Tools; <br>
+And Privacy setting, add Screen Recording and Accessibility under: <br>
+`System Settings > Privacy & Security > Accessibility, Screen & System Audio Recording`.
 
 ```
 xcode-select --install
 ```
 
 #### For Windows:
+
 ```
 winget install Golang.go
 ```
+
+[llvm-mingw](https://github.com/mstorsjo/llvm-mingw)
 
 ```
 winget install MartinStorsjo.LLVM-MinGW.UCRT
 ```
 
-Or [MinGW-w64](https://sourceforge.net/projects/mingw-w64/files) (Use recommended) or others Mingw [llvm-mingw](https://github.com/mstorsjo/llvm-mingw);
+or [Mingw-w64](https://sourceforge.net/projects/mingw-w64/files)
 
-Download the Mingw, then set system environment variables `C:\mingw64\bin` to the Path.
+```
+winget install BrechtSanders.WinLibs.POSIX.UCRT
+```
+
+Or Download the [Mingw-w64](https://sourceforge.net/projects/mingw-w64/files) and the others gcc, then set system environment variables like `C:\mingw64\bin` to the env `Path`.
 [Set environment variables to run GCC from command line](https://www.youtube.com/results?search_query=Set+environment+variables+to+run+GCC+from+command+line).
 
-`Or the other GCC` (But you should compile the "libpng" with yourself when use the [bitmap](https://github.com/vcaesar/bitmap).)
+`Or The others GCC` (Except the Mingw-w64, you should compile the "libpng" with yourself when use the [bitmap](https://github.com/vcaesar/bitmap).)
 
 #### For everything else:
 
@@ -96,11 +98,9 @@ X11 with the XTest extension (the Xtst library)
 
 "Clipboard": xsel xclip
 
-
 "Bitmap": libpng (Just used by the "bitmap".)
 
 "Event-Gohook": xcb, xkb, libxkbcommon (Just used by the "hook".)
-
 ```
 
 ##### Ubuntu:
@@ -118,13 +118,11 @@ sudo apt install libx11-dev xorg-dev libxtst-dev
 # Clipboard
 sudo apt install xsel xclip
 
-#
 # Bitmap
 sudo apt install libpng++-dev
 
 # GoHook
 sudo apt install xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev libxkbcommon-x11-dev libxkbcommon-dev
-
 ```
 
 ##### Fedora:
@@ -136,13 +134,11 @@ sudo dnf install libXtst-devel
 # Clipboard
 sudo dnf install xsel xclip
 
-#
 # Bitmap
 sudo dnf install libpng-devel
 
 # GoHook
 sudo dnf install libxkbcommon-devel libxkbcommon-x11-devel xorg-x11-xkb-utils-devel
-
 ```
 
 ## Installation:
@@ -226,12 +222,12 @@ import (
 )
 
 func main() {
-  robotgo.TypeStr("Hello World")
-  robotgo.TypeStr("だんしゃり", 0, 1)
-  // robotgo.TypeStr("テストする")
+  robotgo.Type("Hello World")
+  robotgo.Type("だんしゃり", 0, 1)
+  // robotgo.Type("テストする")
 
-  robotgo.TypeStr("Hi, Seattle space needle, Golden gate bridge, One world trade center.")
-  robotgo.TypeStr("Hi galaxy, hi stars, hi MT.Rainier, hi sea. こんにちは世界.")
+  robotgo.Type("Hi, Seattle space needle, Golden gate bridge, One world trade center.")
+  robotgo.Type("Hi galaxy, hi stars, hi MT.Rainier, hi sea. こんにちは世界.")
   robotgo.Sleep(1)
 
   // ustr := uint32(robotgo.CharCodeAt("Test", 0))
@@ -239,7 +235,7 @@ func main() {
 
   robotgo.KeySleep = 100
   robotgo.KeyTap("enter")
-  // robotgo.TypeStr("en")
+  // robotgo.Type("en")
   robotgo.KeyTap("i", "alt", "cmd")
 
   arr := []string{"alt", "cmd"}
@@ -483,7 +479,7 @@ func main() {
     fmt.Println("pids... ", fpid)
 
     if len(fpid) > 0 {
-      robotgo.TypeStr("Hi galaxy!", fpid[0])
+      robotgo.Type("Hi galaxy!", fpid[0])
       robotgo.KeyTap("a", fpid[0], "cmd")
 
       robotgo.KeyToggle("a", fpid[0])
@@ -516,9 +512,8 @@ func main() {
 
 ## Authors
 
-- [The author is vz](https://github.com/vcaesar)
+- [The author is Evans](https://github.com/vcaesar)
 - [Maintainers](https://github.com/orgs/go-vgo/people)
-- [Contributors](https://github.com/go-vgo/robotgo/graphs/contributors)
 
 ## Plans
 
@@ -535,6 +530,6 @@ func main() {
 
 ## License
 
-Robotgo is primarily distributed under the terms of "both the MIT license and the Apache License (Version 2.0)", with portions covered by various BSD-like licenses.
+Robotgo is primarily distributed under the terms of "the Apache License (Version 2.0)", with portions covered by various BSD-like licenses.
 
-See [LICENSE-APACHE](http://www.apache.org/licenses/LICENSE-2.0), [LICENSE-MIT](https://github.com/go-vgo/robotgo/blob/master/LICENSE).
+See [LICENSE-APACHE](http://www.apache.org/licenses/LICENSE-2.0), [LICENSE](https://github.com/go-vgo/robotgo/blob/master/LICENSE).

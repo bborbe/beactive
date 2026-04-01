@@ -1,3 +1,14 @@
+// Copyright (c) 2016-2025 AtomAI, All rights reserved.
+//
+// See the COPYRIGHT file at the top-level directory of this distribution and at
+// https://github.com/go-vgo/robotgo/blob/master/LICENSE
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0>
+//
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
 #include "mouse.h"
 #include "../base/deadbeef_rand.h"
 #include "../base/microsleep.h"
@@ -43,7 +54,6 @@
 	}
 
 #elif defined(IS_WINDOWS)
- 
 	DWORD MMMouseUpToMEventF(MMMouseButton button) {
 		if (button == LEFT_BUTTON) { return MOUSEEVENTF_LEFTUP; }
 		if (button == RIGHT_BUTTON) { return MOUSEEVENTF_RIGHTUP; } 
@@ -88,7 +98,6 @@ void moveMouse(MMPointInt32 point){
 								CGPointFromMMPointInt32(point), kCGMouseButtonLeft);
 
 		calculateDeltas(&move, point);
-
 		CGEventPost(kCGHIDEventTap, move);
 		CFRelease(move);
 		CFRelease(source);
@@ -145,22 +154,28 @@ MMPointInt32 location() {
 }
 
 /* Press down a button, or release it. */
-void toggleMouse(bool down, MMMouseButton button) {
+int toggleMouse(bool down, MMMouseButton button) {
 	#if defined(IS_MACOSX)
 		const CGPoint currentPos = CGPointFromMMPointInt32(location());
 		const CGEventType mouseType = MMMouseToCGEventType(down, button);
 		CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
 		CGEventRef event = CGEventCreateMouseEvent(source, mouseType, currentPos, (CGMouseButton)button);
 
+		if (event == NULL) {
+			CFRelease(source);
+			return (int)kCGErrorCannotComplete;
+		}
+	
 		CGEventPost(kCGHIDEventTap, event);
 		CFRelease(event);
 		CFRelease(source);
+		return 0;
 	#elif defined(USE_X11)
 		Display *display = XGetMainDisplay();
-		XTestFakeButtonEvent(display, button, down ? True : False, CurrentTime);
+		Status status = XTestFakeButtonEvent(display, button, down ? True : False, CurrentTime);
 		XSync(display, false);
+		return status ? 0 : 1;
 	#elif defined(IS_WINDOWS)
-		// mouse_event(MMMouseToMEventF(down, button), 0, 0, 0, 0);
 		INPUT mouseInput;
 
 		mouseInput.type = INPUT_MOUSE;
@@ -170,18 +185,23 @@ void toggleMouse(bool down, MMMouseButton button) {
 		mouseInput.mi.time = 0;
 		mouseInput.mi.dwExtraInfo = 0;
 		mouseInput.mi.mouseData = 0;
-		SendInput(1, &mouseInput, sizeof(mouseInput));
+		UINT sent = SendInput(1, &mouseInput, sizeof(mouseInput));
+		return sent == 1 ? 0 : (int)GetLastError();
 	#endif
 }
 
-void clickMouse(MMMouseButton button){
-	toggleMouse(true, button);
+int clickMouse(MMMouseButton button){
+	int err = toggleMouse(true, button);
+	if (err != 0) {
+		return err;
+	}
+
 	microsleep(5.0);
-	toggleMouse(false, button);
+	return toggleMouse(false, button);
 }
 
 /* Special function for sending double clicks, needed for MacOS. */
-void doubleClick(MMMouseButton button){
+int doubleClick(MMMouseButton button, int count){
 	#if defined(IS_MACOSX)
 		/* Double click for Mac. */
 		const CGPoint currentPos = CGPointFromMMPointInt32(location());
@@ -190,9 +210,13 @@ void doubleClick(MMMouseButton button){
 
 		CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
 		CGEventRef event = CGEventCreateMouseEvent(source, mouseTypeDown, currentPos, kCGMouseButtonLeft);
+		if (event == NULL) {
+			CFRelease(source);
+			return (int)kCGErrorCannotComplete;
+		}
 
 		/* Set event to double click. */
-		CGEventSetIntegerValueField(event, kCGMouseEventClickState, 2);
+		CGEventSetIntegerValueField(event, kCGMouseEventClickState, count);
 		CGEventPost(kCGHIDEventTap, event);
 
 		CGEventSetType(event, mouseTypeUP);
@@ -200,11 +224,15 @@ void doubleClick(MMMouseButton button){
 
 		CFRelease(event);
 		CFRelease(source);
+		return 0;
 	#else
 		/* Double click for everything else. */
-		clickMouse(button);
+		int err = clickMouse(button);
+		if (err != 0) {
+			return err;
+		}
 		microsleep(200);
-		clickMouse(button);
+		return clickMouse(button);
 	#endif
 }
 
@@ -218,7 +246,7 @@ void scrollMouseXY(int x, int y) {
 
 	#if defined(IS_MACOSX)
 		CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
-		CGEventRef event = CGEventCreateScrollWheelEvent(source, kCGScrollEventUnitPixel, 2, y, x);
+		CGEventRef event = CGEventCreateScrollWheelEvent(source, kCGScrollEventUnitPixel, 2, y, x);	
 		CGEventPost(kCGHIDEventTap, event);
 
 		CFRelease(event);
@@ -282,7 +310,8 @@ static double crude_hypot(double x, double y){
 	return ((M_SQRT2 - 1.0) * small) + big;
 }
 
-bool smoothlyMoveMouse(MMPointInt32 endPoint, double lowSpeed, double highSpeed){
+static bool smoothlyMoveMouseImpl(MMPointInt32 endPoint, double lowSpeed, double highSpeed,
+		bool drag, MMMouseButton button){
 	MMPointInt32 pos = location();
 	// MMSizeInt32 screenSize = getMainDisplaySize();
 	double velo_x = 0.0, velo_y = 0.0;
@@ -301,18 +330,30 @@ bool smoothlyMoveMouse(MMPointInt32 endPoint, double lowSpeed, double highSpeed)
 		velo_y /= veloDistance;
 
 		pos.x += floor(velo_x + 0.5);
-		pos.y += floor(velo_y + 0.5);
+		pos.y += floor(velo_y + 0.5); 
 
-		/* Make sure we are in the screen boundaries! (Strange things will happen if we are not.) */
-		// if (pos.x >= screenSize.w || pos.y >= screenSize.h) {
+		/* Make sure we are in the screen boundaries! */
+		// if (pos.x >= screenSize.w || pos.y >= screenSize.h) { 
 		// 	return false;
 		// }
-		moveMouse(pos);
+		if (drag) {
+			dragMouse(pos, button);
+		} else {
+			moveMouse(pos);
+		}
 
 		/* Wait 1 - 3 milliseconds. */
 		microsleep(DEADBEEF_UNIFORM(lowSpeed, highSpeed));
 		// microsleep(DEADBEEF_UNIFORM(1.0, 3.0));
 	}
-
 	return true;
+}
+
+bool smoothlyMoveMouse(MMPointInt32 endPoint, double lowSpeed, double highSpeed){
+	return smoothlyMoveMouseImpl(endPoint, lowSpeed, highSpeed, false, LEFT_BUTTON);
+}
+
+bool smoothlyDragMouse(MMPointInt32 endPoint, double lowSpeed, double highSpeed,
+		MMMouseButton button){
+	return smoothlyMoveMouseImpl(endPoint, lowSpeed, highSpeed, true, button);
 }

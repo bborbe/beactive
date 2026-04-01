@@ -1,11 +1,12 @@
-// Copyright 2016 The go-vgo Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
+// Copyright (c) 2016-2025 AtomAI, All rights reserved.
+//
+// See the COPYRIGHT file at the top-level directory of this distribution and at
 // https://github.com/go-vgo/robotgo/blob/master/LICENSE
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
+// http://www.apache.org/licenses/LICENSE-2.0>
+//
+// This file may not be copied, modified, or distributed
 // except according to those terms.
 
 /*
@@ -51,8 +52,10 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"image"
 	"runtime"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -369,7 +372,7 @@ func CaptureGo(args ...int) Bitmap {
 // CaptureImg capture the screen and return image.Image, error
 func CaptureImg(args ...int) (image.Image, error) {
 	bit := CaptureScreen(args...)
-	if bit == nil {
+	if unsafe.Pointer(bit) == nil {
 		return nil, errors.New("Capture image not found.")
 	}
 	defer FreeBitmap(bit)
@@ -504,6 +507,24 @@ func CheckMouse(btn string) C.MMMouseButton {
 	return C.LEFT_BUTTON
 }
 
+// MouseButtonString converts a C.MMMouseButton to a readable name.
+func MouseButtonString(btn C.MMMouseButton) string {
+	m1 := map[C.MMMouseButton]string{
+		C.LEFT_BUTTON:   "left",
+		C.CENTER_BUTTON: "center",
+		C.RIGHT_BUTTON:  "right",
+		C.WheelDown:     "wheelDown",
+		C.WheelUp:       "wheelUp",
+		C.WheelLeft:     "wheelLeft",
+		C.WheelRight:    "wheelRight",
+	}
+	if v, ok := m1[btn]; ok {
+		return v
+	}
+
+	return fmt.Sprintf("button%d", btn)
+}
+
 // MoveScale calculate the os scale factor x, y
 func MoveScale(x, y int, displayId ...int) (int, int) {
 	if Scale || runtime.GOOS == "windows" {
@@ -557,24 +578,11 @@ func Drag(x, y int, args ...string) {
 func DragSmooth(x, y int, args ...interface{}) {
 	Toggle("left")
 	MilliSleep(50)
-	MoveSmooth(x, y, args...)
+	smoothMove(x, y, true, args...)
 	Toggle("left", "up")
 }
 
-// MoveSmooth move the mouse smooth,
-// moves mouse to x, y human like, with the mouse button up.
-//
-// robotgo.MoveSmooth(x, y int, low, high float64, mouseDelay int)
-//
-// Examples:
-//
-//	robotgo.MoveSmooth(10, 10)
-//	robotgo.MoveSmooth(10, 10, 1.0, 2.0)
-func MoveSmooth(x, y int, args ...interface{}) bool {
-	// if runtime.GOOS == "windows" {
-	// 	f := ScaleF()
-	// 	x, y = Scaled0(x, f), Scaled0(y, f)
-	// }
+func smoothMove(x, y int, drag bool, args ...interface{}) bool {
 	x, y = MoveScale(x, y)
 
 	cx := C.int32_t(x)
@@ -598,10 +606,28 @@ func MoveSmooth(x, y int, args ...interface{}) bool {
 		high = 3.0
 	}
 
-	cbool := C.smoothlyMoveMouse(C.MMPointInt32Make(cx, cy), low, high)
+	var cbool C.bool
+	if drag {
+		cbool = C.smoothlyDragMouse(C.MMPointInt32Make(cx, cy), low, high, C.LEFT_BUTTON)
+	} else {
+		cbool = C.smoothlyMoveMouse(C.MMPointInt32Make(cx, cy), low, high)
+	}
 	MilliSleep(MouseSleep + mouseDelay)
 
 	return bool(cbool)
+}
+
+// MoveSmooth move the mouse smooth,
+// moves mouse to x, y human like, with the mouse button up.
+//
+// robotgo.MoveSmooth(x, y int, low, high float64, mouseDelay int)
+//
+// Examples:
+//
+//	robotgo.MoveSmooth(10, 10)
+//	robotgo.MoveSmooth(10, 10, 1.0, 2.0)
+func MoveSmooth(x, y int, args ...interface{}) bool {
+	return smoothMove(x, y, false, args...)
 }
 
 // MoveArgs get the mouse relative args
@@ -638,7 +664,7 @@ func Location() (int, int) {
 	return x, y
 }
 
-// Click click the mouse button
+// ClickV1 click the mouse button
 //
 // robotgo.Click(button string, double bool)
 //
@@ -647,7 +673,7 @@ func Location() (int, int) {
 //	robotgo.Click() // default is left button
 //	robotgo.Click("right")
 //	robotgo.Click("wheelLeft")
-func Click(args ...interface{}) {
+func ClickV1(args ...interface{}) {
 	var (
 		button C.MMMouseButton = C.LEFT_BUTTON
 		double bool
@@ -664,10 +690,123 @@ func Click(args ...interface{}) {
 	if !double {
 		C.clickMouse(button)
 	} else {
-		C.doubleClick(button)
+		C.doubleClick(button, 2)
 	}
 
 	MilliSleep(MouseSleep)
+}
+
+// Click click the mouse button and return error
+//
+// robotgo.Click(button string, double bool)
+//
+// Examples:
+//
+//	err := robotgo.Click() // default is left button
+//	err := robotgo.Click("right")
+func Click(args ...interface{}) error {
+	var (
+		button C.MMMouseButton = C.LEFT_BUTTON
+		double bool
+		count  int
+	)
+
+	if len(args) > 0 {
+		btn, ok := args[0].(string)
+		if !ok {
+			return errors.New("first argument must be a button string")
+		}
+		button = CheckMouse(btn)
+	}
+
+	if len(args) > 1 {
+		dbl, ok := args[1].(bool)
+		if !ok {
+			return errors.New("second argument must be a bool indicating double click")
+		}
+		double = dbl
+	}
+	if len(args) > 2 {
+		count = args[2].(int)
+	}
+
+	defer MilliSleep(MouseSleep)
+	if !double {
+		if code := C.toggleMouse(true, button); code != 0 {
+			return formatClickError(int(code), button, "down", count)
+		}
+
+		MilliSleep(5)
+		code := C.toggleMouse(false, button)
+		return formatClickError(int(code), button, "up", count)
+	}
+
+	code := C.doubleClick(button, 2)
+	return formatClickError(int(code), button, "double", 2)
+}
+
+// MultiClick performs multiple clicks and returns error
+//
+// robotgo.MultiClick(button string, count int)
+func MultiClick(button string, count int, click ...bool) error {
+	if count < 1 {
+		return nil
+	}
+	defer MilliSleep(MouseSleep)
+
+	if runtime.GOOS == "darwin" && len(click) <= 0 {
+		btn := CheckMouse(button)
+		code := C.doubleClick(btn, C.int(count))
+		return formatClickError(int(code), btn, "down", count)
+	}
+
+	for i := 0; i < count; i++ {
+		if err := Click(button, false, i+1); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func formatClickError(code int, button C.MMMouseButton, stage string, count int) error {
+	if code == 0 {
+		return nil
+	}
+	btnName := MouseButtonString(button)
+	detail := ""
+
+	switch runtime.GOOS {
+	case "windows":
+		if code != 0 {
+			detail = syscall.Errno(code).Error()
+		}
+	case "darwin":
+		cgErrors := map[int]string{
+			0:    "kCGErrorSuccess",
+			1000: "kCGErrorFailure",
+			1001: "kCGErrorIllegalArgument",
+			1002: "kCGErrorInvalidConnection",
+			1003: "kCGErrorInvalidContext",
+			1004: "kCGErrorCannotComplete",
+			1005: "kCGErrorNotImplemented",
+			1006: "kCGErrorRangeCheck",
+			1007: "kCGErrorTypeCheck",
+			1008: "kCGErrorNoCurrentPoint",
+			1010: "kCGErrorInvalidOperation",
+		}
+		if v, ok := cgErrors[code]; ok {
+			detail = v
+		}
+	default:
+		if code == 1 {
+			detail = "XTestFakeButtonEvent returned false"
+		}
+	}
+
+	if detail != "" {
+		return fmt.Errorf("click %s failed (%s, count=%d): %s (code=%d)", stage, btnName, count, detail, code)
+	}
+	return fmt.Errorf("click %s failed (%s, count=%d), code=%d", stage, btnName, count, code)
 }
 
 // MoveClick move and click the mouse
@@ -712,12 +851,12 @@ func Toggle(key ...interface{}) error {
 	if len(key) > 1 && key[1].(string) == "up" {
 		down = false
 	}
-	C.toggleMouse(C.bool(down), button)
+
+	code := C.toggleMouse(C.bool(down), button)
 	if len(key) > 2 {
 		MilliSleep(MouseSleep)
 	}
-
-	return nil
+	return formatClickError(int(code), button, "down", 1)
 }
 
 // MouseDown send mouse down event

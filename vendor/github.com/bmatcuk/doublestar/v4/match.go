@@ -46,22 +46,8 @@ import (
 // is PathMatch(). Alternatively, you can run filepath.ToSlash() on both
 // pattern and name and then use this function.
 //
-// Note: users should _not_ count on the returned error,
-// doublestar.ErrBadPattern, being equal to path.ErrBadPattern.
-//
 func Match(pattern, name string) (bool, error) {
 	return matchWithSeparator(pattern, name, '/', true)
-}
-
-// MatchUnvalidated can provide a small performance improvement if you don't
-// care about whether or not the pattern is valid (perhaps because you already
-// ran `ValidatePattern`). Note that there's really only one case where this
-// performance improvement is realized: when pattern matching reaches the end
-// of `name` before reaching the end of `pattern`, such as `Match("a/b/c",
-// "a")`.
-func MatchUnvalidated(pattern, name string) bool {
-	matched, _ := matchWithSeparator(pattern, name, '/', false)
-	return matched
 }
 
 // PathMatch returns true if `name` matches the file name `pattern`. The
@@ -78,22 +64,13 @@ func PathMatch(pattern, name string) (bool, error) {
 	return matchWithSeparator(pattern, name, filepath.Separator, true)
 }
 
-// PathMatchUnvalidated can provide a small performance improvement if you
-// don't care about whether or not the pattern is valid (perhaps because you
-// already ran `ValidatePattern`). Note that there's really only one case where
-// this performance improvement is realized: when pattern matching reaches the
-// end of `name` before reaching the end of `pattern`, such as `Match("a/b/c",
-// "a")`.
-func PathMatchUnvalidated(pattern, name string) bool {
-	matched, _ := matchWithSeparator(pattern, name, filepath.Separator, false)
-	return matched
-}
-
 func matchWithSeparator(pattern, name string, separator rune, validate bool) (matched bool, err error) {
-	return doMatchWithSeparator(pattern, name, separator, validate, -1, -1, -1, -1, 0, 0)
-}
-
-func doMatchWithSeparator(pattern, name string, separator rune, validate bool, doublestarPatternBacktrack, doublestarNameBacktrack, starPatternBacktrack, starNameBacktrack, patIdx, nameIdx int) (matched bool, err error) {
+	doublestarPatternBacktrack := -1
+	doublestarNameBacktrack := -1
+	starPatternBacktrack := -1
+	starNameBacktrack := -1
+	patIdx := 0
+	nameIdx := 0
 	patLen := len(pattern)
 	nameLen := len(name)
 	startOfSegment := true
@@ -224,7 +201,6 @@ MATCH:
 
 			case '{':
 				startOfSegment = false
-				beforeIdx := patIdx
 				patIdx++
 				closingIdx := indexMatchedClosingAlt(pattern[patIdx:], separator != '\\')
 				if closingIdx == -1 {
@@ -233,21 +209,21 @@ MATCH:
 				}
 				closingIdx += patIdx
 
-				for {
+				for ;; {
 					commaIdx := indexNextAlt(pattern[patIdx:closingIdx], separator != '\\')
 					if commaIdx == -1 {
 						break
 					}
 					commaIdx += patIdx
 
-					result, err := doMatchWithSeparator(pattern[:beforeIdx]+pattern[patIdx:commaIdx]+pattern[closingIdx+1:], name, separator, validate, doublestarPatternBacktrack, doublestarNameBacktrack, starPatternBacktrack, starNameBacktrack, beforeIdx, nameIdx)
+					result, err := matchWithSeparator(pattern[patIdx:commaIdx] + pattern[closingIdx+1:], name[nameIdx:], separator, validate)
 					if result || err != nil {
 						return result, err
 					}
 
 					patIdx = commaIdx + 1
 				}
-				return doMatchWithSeparator(pattern[:beforeIdx]+pattern[patIdx:closingIdx]+pattern[closingIdx+1:], name, separator, validate, doublestarPatternBacktrack, doublestarNameBacktrack, starPatternBacktrack, starNameBacktrack, beforeIdx, nameIdx)
+				return matchWithSeparator(pattern[patIdx:closingIdx] + pattern[closingIdx+1:], name[nameIdx:], separator, validate)
 
 			case '\\':
 				if separator != '\\' {
@@ -319,18 +295,13 @@ MATCH:
 	// we've reached the end of `name`; we've successfully matched if we've also
 	// reached the end of `pattern`, or if the rest of `pattern` can match a
 	// zero-length string
-	return isZeroLengthPattern(pattern[patIdx:], separator, validate)
+	return isZeroLengthPattern(pattern[patIdx:], separator)
 }
 
-func isZeroLengthPattern(pattern string, separator rune, validate bool) (ret bool, err error) {
-	// `/**`, `**/`, and `/**/` are special cases - a pattern such as `path/to/a/**` or `path/to/a/**/`
-	// *should* match `path/to/a` because `a` might be a directory
-	if pattern == "" ||
-		pattern == "*" ||
-		pattern == "**" ||
-		pattern == string(separator)+"**" ||
-		pattern == "**"+string(separator) ||
-		pattern == string(separator)+"**"+string(separator) {
+func isZeroLengthPattern(pattern string, separator rune) (ret bool, err error) {
+	// `/**` is a special case - a pattern such as `path/to/a/**` *should* match
+	// `path/to/a` because `a` might be a directory
+	if pattern == "" || pattern == "*" || pattern == "**" || pattern == string(separator) + "**" {
 		return true, nil
 	}
 
@@ -343,25 +314,25 @@ func isZeroLengthPattern(pattern string, separator rune, validate bool) (ret boo
 		closingIdx += 1
 
 		patIdx := 1
-		for {
+		for ;; {
 			commaIdx := indexNextAlt(pattern[patIdx:closingIdx], separator != '\\')
 			if commaIdx == -1 {
 				break
 			}
 			commaIdx += patIdx
 
-			ret, err = isZeroLengthPattern(pattern[patIdx:commaIdx]+pattern[closingIdx+1:], separator, validate)
+			ret, err = isZeroLengthPattern(pattern[patIdx:commaIdx] + pattern[closingIdx+1:], separator)
 			if ret || err != nil {
 				return
 			}
 
 			patIdx = commaIdx + 1
 		}
-		return isZeroLengthPattern(pattern[patIdx:closingIdx]+pattern[closingIdx+1:], separator, validate)
+		return isZeroLengthPattern(pattern[patIdx:closingIdx] + pattern[closingIdx+1:], separator)
 	}
 
 	// no luck - validate the rest of the pattern
-	if validate && !doValidatePattern(pattern, separator) {
+	if !doValidatePattern(pattern, separator) {
 		return false, ErrBadPattern
 	}
 	return false, nil

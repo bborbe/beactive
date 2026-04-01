@@ -2,7 +2,10 @@
 
 ## Introduction
 
-This document explains how to contribute changes to the Robotgo project. It assumes you have followed the README.md and [API Document](https://github.com/go-vgo/robotgo/blob/master/docs/doc.md). <!--Sensitive security-related issues should be reported to [security@Robotgo.io](mailto:security@Robotgo.io.)-->
+This document explains how to contribute changes to the Robotgo project. It assumes you have followed the README.md and [API Document](https://github.com/go-vgo/robotgo/blob/master/docs/doc.md).
+Sensitive security-related issues should be reported to [info@atomai.cc](info@atomaicc).
+
+<!-- [security@Robotgo.io](mailto:security@Robotgo.io.) -->
 
 ## Bug reports
 
@@ -30,19 +33,17 @@ Before sending code out for review, run all the tests for the whole tree to make
 
 In addition to the owner, Changes to Robotgo must be reviewed before they are accepted, no matter who makes the change even if it is a maintainer. We use GitHub's pull request workflow to do that and we also use [LGTM](http://lgtm.co) to ensure every PR is reviewed by vz or least 2 maintainers.
 
-
 ## Sign your work
 
-The sign-off is a simple line at the end of the explanation for the patch. Your signature certifies that you wrote the patch or otherwise have the right to pass it on as an open-source patch. 
+The sign-off is a simple line at the end of the explanation for the patch. Your signature certifies that you wrote the patch or otherwise have the right to pass it on as an open-source patch.
 
 ## Maintainers
 
-To make sure every PR is checked, we got team maintainers. A maintainer should be a contributor of Robotgo and contributed at least 4 accepted PRs. 
+To make sure every PR is checked, we got team maintainers. A maintainer should be a contributor of Robotgo and contributed at least 4 accepted PRs.
 
 ## Owners
 
 Since Robotgo is a pure community organization without any company support, Copyright 2016 The go-vgo Project Developers.
-
 
 ## Versions
 
@@ -55,14 +56,15 @@ Since the `master` branch is a tip version, if you wish to use Robotgo in produc
 Code that you contribute should use the standard copyright header:
 
 ```
-// Copyright 2016 The go-vgo Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
+// Copyright (c) 2016-2025 AtomAI, All rights reserved.
+//
+// See the COPYRIGHT file at the top-level directory of this distribution and at
 // https://github.com/go-vgo/robotgo/blob/master/LICENSE
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
+// http://www.apache.org/licenses/LICENSE-2.0>
+//
+// This file may not be copied, modified, or distributed
 // except according to those terms.
 ```
 
