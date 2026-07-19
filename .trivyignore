@@ -5,3 +5,5 @@ CVE-2026-33997
 CVE-2026-41567
 CVE-2026-41568
 CVE-2026-42306
+# golang.org/x/crypto/openpgp unmaintained (no fix); transitive dep, not imported by beactive
+GO-2026-5932
