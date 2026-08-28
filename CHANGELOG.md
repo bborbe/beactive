@@ -5,11 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v0.1.2
+## Unreleased
 
-- Bump go toolchain to 1.27.0 and update ginkgo/gomega/pprof deps
-- Add do-not-merge label gate workflow for PRs
-- Opt into autoMerge.trivial for mechanically-trivial update PRs
+- chore: update Go to 1.27.0 and github.com/onsi/ginkgo/v2 to v2.32.1, github.com/onsi/gomega to v1.43.0; drop obsolete replace directives
 
 ## v0.1.1
 
