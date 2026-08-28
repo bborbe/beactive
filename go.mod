@@ -1,21 +1,16 @@
 module github.com/bborbe/beactive
 
-go 1.26.6
+go 1.27.0
 
 replace (
-	github.com/anthropics/anthropic-sdk-go => github.com/anthropics/anthropic-sdk-go v1.26.0
-	github.com/charmbracelet/x/cellbuf => github.com/charmbracelet/x/cellbuf v0.0.15
-	github.com/denis-tingaikin/go-header => github.com/denis-tingaikin/go-header v0.5.0
-	github.com/diskfs/go-diskfs => github.com/diskfs/go-diskfs v1.7.0
-	github.com/nunnatsa/ginkgolinter/types => github.com/nunnatsa/ginkgolinter v0.19.1
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.2.0
 )
 
 require (
 	github.com/go-vgo/robotgo v1.0.2
 	github.com/golang/glog v1.2.5
-	github.com/onsi/ginkgo/v2 v2.28.1
-	github.com/onsi/gomega v1.39.1
+	github.com/onsi/ginkgo/v2 v2.32.1
+	github.com/onsi/gomega v1.43.0
 )
 
 require (
@@ -31,7 +26,7 @@ require (
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 // indirect
+	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 // indirect
 	github.com/jezek/xgb v1.3.0 // indirect
 	github.com/jezek/xgbutil v0.0.0-20260124183602-9fd151d6a51a // indirect
 	github.com/lufia/plan9stats v0.0.0-20260324052639-156f7da3f749 // indirect
