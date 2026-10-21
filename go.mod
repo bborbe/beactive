@@ -1,13 +1,13 @@
 module github.com/bborbe/beactive
 
-go 1.27.2
+go 1.27.3
 
 replace (
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.2.0
 )
 
 require (
-	github.com/go-vgo/robotgo v1.3.5
+	github.com/go-vgo/robotgo v1.3.6
 	github.com/golang/glog v1.2.5
 	github.com/onsi/ginkgo/v2 v2.33.1
 	github.com/onsi/gomega v1.44.0
@@ -16,7 +16,7 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/dblohm7/wingoes v0.0.0-20260526185140-fb298caac7ca // indirect
-	github.com/ebitengine/purego v0.11.1 // indirect
+	github.com/ebitengine/purego v0.11.2 // indirect
 	github.com/gen2brain/shm v0.2.2 // indirect
 	github.com/gkampitakis/go-snaps v0.5.20 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
