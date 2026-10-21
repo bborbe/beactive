@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- chore: update Go to 1.27.3 and github.com/go-vgo/robotgo to v1.3.6
+
 ## v0.1.8
 
 - chore: update github.com/onsi/ginkgo/v2 to v2.33.1, github.com/onsi/gomega to v1.44.0
