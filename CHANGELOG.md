@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- chore: restate the do-not-merge contract in the gate workflow
+- chore: bump golang.org/x/net to v0.62.0 to clear CVE-2026-78661 and CVE-2026-97045
+
 ## v0.1.9
 
 - chore: update Go to 1.27.3 and github.com/go-vgo/robotgo to v1.3.6
