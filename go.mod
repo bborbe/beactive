@@ -1,13 +1,13 @@
 module github.com/bborbe/beactive
 
-go 1.27.3
+go 1.27.4
 
 replace (
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.2.0
 )
 
 require (
-	github.com/go-vgo/robotgo v1.3.6
+	github.com/go-vgo/robotgo v1.3.7
 	github.com/golang/glog v1.2.5
 	github.com/onsi/ginkgo/v2 v2.33.1
 	github.com/onsi/gomega v1.44.0
@@ -16,7 +16,7 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/dblohm7/wingoes v0.0.0-20260526185140-fb298caac7ca // indirect
-	github.com/ebitengine/purego v0.11.2 // indirect
+	github.com/ebitengine/purego v0.11.3 // indirect
 	github.com/gen2brain/shm v0.2.2 // indirect
 	github.com/gkampitakis/go-snaps v0.5.20 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -28,29 +28,29 @@ require (
 	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 // indirect
 	github.com/jezek/xgb v1.3.1 // indirect
 	github.com/jezek/xgbutil v0.0.0-20260124183602-9fd151d6a51a // indirect
-	github.com/lufia/plan9stats v0.0.0-20260802145828-341c2f0c90b5 // indirect
+	github.com/lufia/plan9stats v0.0.0-20261101121723-be84dd9509a0 // indirect
 	github.com/otiai10/gosseract/v2 v2.4.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20260916203055-22a1a467d9f0 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
-	github.com/shirou/gopsutil/v4 v4.26.9 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.10 // indirect
 	github.com/tailscale/win v0.0.0-20260619195133-2d76c33a64c1 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
-	github.com/vcaesar/go-wayland v0.40.0 // indirect
+	github.com/vcaesar/go-wayland v0.50.0 // indirect
 	github.com/vcaesar/gops v0.43.0 // indirect
 	github.com/vcaesar/imgo v0.44.0 // indirect
 	github.com/vcaesar/keycode v0.20.0 // indirect
-	github.com/vcaesar/screenshot v0.40.0 // indirect
+	github.com/vcaesar/screenshot v0.40.1 // indirect
 	github.com/vcaesar/tt v0.40.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e // indirect
-	golang.org/x/image v0.47.0 // indirect
+	golang.org/x/exp v0.0.0-20261109185158-a52e3aef5920 // indirect
+	golang.org/x/image v0.48.0 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
-	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
-	golang.org/x/text v0.43.0 // indirect
-	golang.org/x/tools v0.52.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
+	golang.org/x/tools v0.52.1-0.20261106145633-d407941a339a // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

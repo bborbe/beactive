@@ -2,3 +2,6 @@
 /.claude/
 /CLAUDE.md
 /.mcp-*
+
+# compiled binary from `go build` at the repo root — never commit it
+/beactive
