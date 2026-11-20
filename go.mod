@@ -9,7 +9,7 @@ replace (
 require (
 	github.com/go-vgo/robotgo v1.3.7
 	github.com/golang/glog v1.2.5
-	github.com/onsi/ginkgo/v2 v2.33.1
+	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
 )
 
@@ -53,4 +53,8 @@ require (
 	golang.org/x/text v0.44.0 // indirect
 	golang.org/x/tools v0.52.1-0.20261106145633-d407941a339a // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
+)
+
+exclude (
+	sigs.k8s.io/structured-merge-diff/v7 v7.0.0
 )

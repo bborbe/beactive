@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.12
+
+- Update ginkgo/v2 to v2.34.0
+- Exclude sigs.k8s.io/structured-merge-diff/v7 v7.0.0 in go.mod
+
 ## v0.1.11
 
 - chore: update Go to 1.27.4 and github.com/go-vgo/robotgo to v1.3.7
